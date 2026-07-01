@@ -1,0 +1,76 @@
+import { CreditCard } from 'lucide-react';
+import StatusBadge from './StatusBadge';
+import EmptyState from './EmptyState';
+import { formatCurrency, formatDate } from '../../utils/format';
+
+/**
+ * PaymentList — table of BookingPayment records for a booking's detail page.
+ */
+const PaymentList = ({ payments = [] }) => {
+  if (payments.length === 0) {
+    return <EmptyState message="No payments recorded yet" />;
+  }
+
+  const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+
+  return (
+    <div>
+      <div className="overflow-x-auto rounded-xl border border-gray-200">
+        <table className="min-w-full divide-y divide-gray-200 bg-white">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Date
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Mode
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Reference
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Recorded By
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Amount
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {payments.map((payment) => (
+              <tr key={payment.id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                  {formatDate(payment.paidAt)}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <StatusBadge value={payment.mode} />
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                  {payment.referenceNumber || '—'}
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                  {payment.createdBy?.fullName || '—'}
+                </td>
+                <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right whitespace-nowrap">
+                  {formatCurrency(payment.amount)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="bg-gray-50 border-t border-gray-200">
+            <tr>
+              <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-gray-700">
+                Total Paid
+              </td>
+              <td className="px-4 py-3 text-sm font-bold text-primary text-right">
+                {formatCurrency(totalPaid)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default PaymentList;
