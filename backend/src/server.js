@@ -7,6 +7,21 @@ const path = require('path');
 
 const routes = require('./routes/index');
 const errorMiddleware = require('./middleware/errorMiddleware');
+const db = require('./db');
+
+// ─── JWT Secret Guard (BUG-017) ───────────────────────────────────────────────
+// Refuse to start with the committed placeholder or any weak (<32 char) secret.
+const JWT_SECRET = process.env.JWT_SECRET || '';
+const KNOWN_WEAK_SECRETS = ['crm-jwt-secret-key-phase1-2024'];
+if (
+  KNOWN_WEAK_SECRETS.includes(JWT_SECRET) ||
+  JWT_SECRET.length < 32
+) {
+  console.error(
+    '[FATAL] JWT_SECRET is missing or too weak. Set a high-entropy secret (≥32 chars) in .env before starting the server.'
+  );
+  process.exit(1);
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -36,14 +51,24 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // ─── Static Files (uploads) ───────────────────────────────────────────────────
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+// SECURITY (BUG-002): Only public, low-sensitivity assets (company logos) are
+// served statically. Sensitive booking documents (ID proofs, signed agreements,
+// payment proofs) are NOT exposed here — they are downloaded through the
+// authenticated, tenant-scoped route GET /api/bookings/:id/documents/:documentId/download.
+app.use('/uploads/companies', express.static(path.join(__dirname, '..', 'uploads', 'companies')));
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api', routes);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
-app.get('/health', (req, res) => {
-  res.json({ success: true, message: 'Server is running', data: { timestamp: new Date() } });
+// BUG-031: verify DB connectivity so load-balancers can detect a down database.
+app.get('/health', async (req, res) => {
+  try {
+    await db.$queryRaw`SELECT 1`;
+    res.json({ success: true, message: 'Server is running', data: { timestamp: new Date(), db: 'ok' } });
+  } catch {
+    res.status(503).json({ success: false, message: 'Database unreachable', data: { timestamp: new Date(), db: 'error' } });
+  }
 });
 
 // ─── 404 Handler ──────────────────────────────────────────────────────────────

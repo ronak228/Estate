@@ -11,6 +11,7 @@ const unitRoutes = require('./unitRoutes');
 const quotationRoutes = require('./quotationRoutes');
 const negotiationRoutes = require('./negotiationRoutes');
 const bookingRoutes = require('./bookingRoutes');
+const statsRoutes = require('./statsRoutes');
 
 router.use('/auth', authRoutes);
 router.use('/companies', companyRoutes);
@@ -22,5 +23,6 @@ router.use('/units', unitRoutes);
 router.use('/quotations', quotationRoutes);
 router.use('/negotiations', negotiationRoutes);
 router.use('/bookings', bookingRoutes);
+router.use('/stats', statsRoutes);
 
 module.exports = router;

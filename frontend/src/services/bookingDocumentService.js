@@ -23,6 +23,18 @@ const bookingDocumentService = {
     return res.data.data.items;
   },
 
+  /**
+   * Download a booking document through the authenticated, tenant-scoped route.
+   * Returns a Blob (JWT is attached by the axios interceptor).
+   */
+  downloadDocument: async (bookingId, documentId) => {
+    const res = await api.get(
+      `/bookings/${bookingId}/documents/${documentId}/download`,
+      { responseType: 'blob' }
+    );
+    return res.data;
+  },
+
   deleteDocument: async (bookingId, documentId) => {
     await api.delete(`/bookings/${bookingId}/documents/${documentId}`);
   },

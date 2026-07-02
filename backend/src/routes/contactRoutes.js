@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/authMiddleware');
 const {
+  createContact,
   listContacts,
   getContact,
   updateContact,
@@ -11,6 +12,7 @@ const {
 
 const CRM = ['ADMIN', 'MANAGER', 'SALES_EXECUTIVE'];
 
+router.post('/', authenticate, authorize(...CRM), createContact);
 router.get('/', authenticate, authorize(...CRM), listContacts);
 router.get('/:id', authenticate, authorize(...CRM), getContact);
 router.put('/:id', authenticate, authorize(...CRM), updateContact);

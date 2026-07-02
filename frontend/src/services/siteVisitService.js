@@ -17,7 +17,7 @@ const siteVisitService = {
   },
 
   updateSiteVisit: async (id, data) => {
-    const res = await api.patch(`/site-visits/${id}`, data);
+    const res = await api.put(`/site-visits/${id}`, data);
     return res.data.data.siteVisit;
   },
 

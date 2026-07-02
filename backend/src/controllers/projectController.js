@@ -1,5 +1,6 @@
 const db = require('../db');
 const { sendSuccess, sendError } = require('../utils/response');
+const { getPagination } = require('../utils/pagination');
 
 const VALID_STATUSES = ['UPCOMING', 'UNDER_CONSTRUCTION', 'READY_TO_MOVE', 'COMPLETED'];
 
@@ -35,9 +36,9 @@ const createProject = async (req, res, next) => {
 
 const listProjects = async (req, res, next) => {
   try {
-    const { status, search, page = 1, pageSize = 20 } = req.query;
+    const { status, search } = req.query;
     const companyId = req.user.companyId;
-    const skip = (parseInt(page) - 1) * parseInt(pageSize);
+    const { page, pageSize, skip, take } = getPagination(req.query);
 
     if (status && !VALID_STATUSES.includes(status)) {
       return sendError(res, `status must be one of: ${VALID_STATUSES.join(', ')}`, 400);
@@ -57,7 +58,7 @@ const listProjects = async (req, res, next) => {
       db.project.findMany({
         where,
         skip,
-        take: parseInt(pageSize),
+        take,
         orderBy: { createdAt: 'desc' },
         include: {
           _count: { select: { units: true } },
@@ -68,8 +69,8 @@ const listProjects = async (req, res, next) => {
     return sendSuccess(res, 'Projects retrieved', {
       items,
       total,
-      page: parseInt(page),
-      pageSize: parseInt(pageSize),
+      page,
+      pageSize,
     });
   } catch (err) {
     next(err);

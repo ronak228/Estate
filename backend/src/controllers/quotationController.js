@@ -1,5 +1,8 @@
 const db = require('../db');
+const { Prisma } = require('@prisma/client');
 const { sendSuccess, sendError } = require('../utils/response');
+const { getPagination } = require('../utils/pagination');
+const { VALID_QUOTATION_DECISIONS } = require('../utils/constants');
 const generateQuotationPdf = require('../utils/generateQuotationPdf');
 
 // ─── Shared include shape ─────────────────────────────────────────────────────
@@ -43,6 +46,11 @@ const createQuotation = async (req, res, next) => {
     });
     if (!unit) return sendError(res, 'Unit not found', 404);
 
+    // Business Rule 4 (BUG-004): only AVAILABLE units may be quoted.
+    if (unit.status !== 'AVAILABLE') {
+      return sendError(res, `Unit is not available (current status: ${unit.status})`, 400);
+    }
+
     // Validate charges array
     if (!Array.isArray(charges)) {
       return sendError(res, 'charges must be an array', 400);
@@ -56,10 +64,14 @@ const createQuotation = async (req, res, next) => {
       }
     }
 
-    // Snapshot basePrice from unit at creation time — never re-read live afterward
-    const basePrice = Number(unit.basePrice);
-    const chargesTotal = charges.reduce((sum, c) => sum + Number(c.amount), 0);
-    const totalAmount = basePrice + chargesTotal;
+    // Snapshot basePrice from unit at creation time — never re-read live afterward.
+    // Decimal-safe math (BUG-003): no floating-point rounding on money.
+    const basePrice = new Prisma.Decimal(unit.basePrice);
+    const chargesTotal = charges.reduce(
+      (sum, c) => sum.plus(new Prisma.Decimal(c.amount)),
+      new Prisma.Decimal(0)
+    );
+    const totalAmount = basePrice.plus(chargesTotal);
 
     const validUntilDate = validUntil ? new Date(validUntil) : undefined;
     if (validUntil && isNaN(validUntilDate?.getTime())) {
@@ -77,7 +89,7 @@ const createQuotation = async (req, res, next) => {
         charges: {
           create: charges.map((c) => ({
             label: c.label.trim(),
-            amount: Number(c.amount),
+            amount: new Prisma.Decimal(c.amount),
           })),
         },
       },
@@ -88,8 +100,8 @@ const createQuotation = async (req, res, next) => {
     await db.activityLog.create({
       data: {
         inquiryId,
-        type: 'STAGE_CHANGED',
-        description: `Quotation created for Unit ${unit.unitNumber} — Total: ₹${totalAmount.toLocaleString('en-IN')}`,
+        type: 'QUOTATION_CREATED',
+        description: `Quotation created for Unit ${unit.unitNumber} — Total: ₹${Number(totalAmount).toLocaleString('en-IN')}`,
         performedById: req.user.id,
       },
     });
@@ -104,9 +116,9 @@ const createQuotation = async (req, res, next) => {
 
 const listQuotations = async (req, res, next) => {
   try {
-    const { inquiryId, decision, page = 1, pageSize = 20 } = req.query;
+    const { inquiryId, decision } = req.query;
     const companyId = req.user.companyId;
-    const skip = (parseInt(page) - 1) * parseInt(pageSize);
+    const { page, pageSize, skip, take } = getPagination(req.query);
 
     const where = {
       inquiry: { companyId },
@@ -120,7 +132,7 @@ const listQuotations = async (req, res, next) => {
       db.quotation.findMany({
         where,
         skip,
-        take: parseInt(pageSize),
+        take,
         orderBy: { createdAt: 'desc' },
         include: QUOTATION_INCLUDE,
       }),
@@ -129,8 +141,8 @@ const listQuotations = async (req, res, next) => {
     return sendSuccess(res, 'Quotations retrieved', {
       items,
       total,
-      page: parseInt(page),
-      pageSize: parseInt(pageSize),
+      page,
+      pageSize,
     });
   } catch (err) {
     next(err);
@@ -229,10 +241,8 @@ const updateDecision = async (req, res, next) => {
     const { decision } = req.body;
     const companyId = req.user.companyId;
 
-    const VALID_DECISIONS = ['PENDING', 'NEGOTIATING', 'ACCEPTED', 'REJECTED'];
-    if (!decision) return sendError(res, 'decision is required', 400);
-    if (!VALID_DECISIONS.includes(decision)) {
-      return sendError(res, `decision must be one of: ${VALID_DECISIONS.join(', ')}`, 400);
+    if (!VALID_QUOTATION_DECISIONS.includes(decision)) {
+      return sendError(res, `decision must be one of: ${VALID_QUOTATION_DECISIONS.join(', ')}`, 400);
     }
 
     const existing = await db.quotation.findFirst({
@@ -252,9 +262,8 @@ const updateDecision = async (req, res, next) => {
       db.activityLog.create({
         data: {
           inquiryId: existing.inquiryId,
-          type: 'STAGE_CHANGED',
+          type: 'QUOTATION_DECISION_UPDATED',
           description: `Quotation decision updated to: ${decision}`,
-          performedById: req.user.id,
         },
       }),
     ]);

@@ -30,6 +30,7 @@ const DocumentUploader = ({
   documents = [],
   onUpload,
   onDelete,
+  onDownload,
   uploading = false,
   uploadError = '',
   canDelete = false,
@@ -139,15 +140,14 @@ const DocumentUploader = ({
                 </div>
 
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <a
-                    href={doc.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => onDownload?.(doc)}
                     className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/5 transition-colors"
                     title="View / Download"
                   >
                     <Download size={15} />
-                  </a>
+                  </button>
 
                   {canDelete && (
                     <button

@@ -191,12 +191,15 @@ Sales Negotiation & Booking
 
 | Role | Permissions |
 |------|-------------|
-| `SUPER_ADMIN` | Full access across all companies — can create, view, and edit all projects and units |
+| `SUPER_ADMIN` | Platform administration only — manages companies and their admins. Project/Unit inventory is **tenant-scoped** and is **not** managed by SUPER_ADMIN (SUPER_ADMIN has no `companyId`). Inventory is owned by each company's ADMIN/MANAGER. |
 | `ADMIN` | Full access within their company — can create projects, add units, edit details, and change unit status |
 | `MANAGER` | Can create projects, add units, and edit details within their company; can change unit status |
 | `SALES_EXECUTIVE` | Read-only access — can view projects and units, and filter by availability; cannot create or edit |
 
+> **Note (BUG-010 resolution, 2026-07-01):** The original spec granted SUPER_ADMIN "full access across all companies" for projects and units. The implementation is intentionally tenant-scoped — project/unit routes authorize only `ADMIN`/`MANAGER`/`SALES_EXECUTIVE`, and controllers scope by `req.user.companyId` (which is `null` for SUPER_ADMIN). This table has been corrected to match the implemented (and multi-tenant-consistent) model. Cross-company inventory management by SUPER_ADMIN is intentionally out of scope; if it is required later, it must be added as an explicit company-selection API rather than by loosening the tenant scoping.
+
 ---
+
 
 ## 8. Module Outcome
 
@@ -231,20 +234,25 @@ Extends the existing `Project` model with the following additional fields:
 
 Existing fields retained: `id`, `companyId`, `company`, `name`, `location`, `inquiries`, `createdAt`.
 
-#### Unit Model
-Defined once, shared across all modules:
+#### Unit Model — dimension-based (BUG-027 correction)
+Defined once, shared across all modules. **Note:** the original spec defined `Unit` with a single `price` field. The implementation uses a dimension-based model where `basePrice` is calculated server-side from width × length × pricePerSqFt. This table reflects the actual implementation.
 
 | Field | Type | Notes |
 |-------|------|-------|
 | `id` | `String` | UUID primary key |
 | `projectId` | `String` | FK → Project |
 | `unitNumber` | `String` | Unique per project |
-| `price` | `Decimal` | Base price |
+| `width` | `Decimal` | Feet |
+| `length` | `Decimal` | Feet |
+| `area` | `Decimal` | Calculated: width × length (sq. ft.) |
+| `pricePerSqFt` | `Decimal` | ₹ per sq. ft. |
+| `basePrice` | `Decimal` | Calculated: area × pricePerSqFt — snapshot used by quotations |
 | `status` | `UnitStatus` | Defaults to `AVAILABLE` |
 | `siteVisits` | `SiteVisit[]` | Relation |
 | `quotations` | `Quotation[]` | Relation |
 | `bookings` | `Booking[]` | Relation |
 | `createdAt` | `DateTime` | Auto-managed |
+| `updatedAt` | `DateTime` | Auto-managed |
 
 Unique constraint: `@@unique([projectId, unitNumber])`
 

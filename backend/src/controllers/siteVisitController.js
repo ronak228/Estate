@@ -1,5 +1,7 @@
 const db = require('../db');
 const { sendSuccess, sendError } = require('../utils/response');
+const { getPagination } = require('../utils/pagination');
+const { MANUAL_SITE_VISIT_STATUSES } = require('../utils/constants');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,18 +53,38 @@ const createSiteVisit = async (req, res, next) => {
         where: { id: unitId, project: { companyId } },
       });
       if (!unit) return sendError(res, 'Unit not found', 400);
+
+      // Business Rule 4 (BUG-004): only AVAILABLE units may be selected.
+      if (unit.status !== 'AVAILABLE') {
+        return sendError(res, `Unit is not available (current status: ${unit.status})`, 400);
+      }
     }
 
-    const siteVisit = await db.siteVisit.create({
-      data: {
-        inquiryId,
-        unitId: unitId || null,
-        scheduledAt: scheduledDate,
-        notes: notes?.trim() || null,
-        createdById: req.user.id,
-        status: 'SCHEDULED',
-      },
-      include: SITE_VISIT_INCLUDE,
+    const siteVisit = await db.$transaction(async (tx) => {
+      const created = await tx.siteVisit.create({
+        data: {
+          inquiryId,
+          unitId: unitId || null,
+          scheduledAt: scheduledDate,
+          notes: notes?.trim() || null,
+          createdById: req.user.id,
+          status: 'SCHEDULED',
+        },
+        include: SITE_VISIT_INCLUDE,
+      });
+
+      // Advance inquiry stage to SITE_VISIT_SCHEDULED if it hasn't progressed
+      // past that point yet (BUG-020 — site-visit lifecycle drives inquiry stage).
+      const STAGES_BEFORE_VISIT = ['NEW', 'CONTACTED', 'QUALIFIED'];
+      const inq = await tx.inquiry.findUnique({ where: { id: inquiryId }, select: { stage: true } });
+      if (inq && STAGES_BEFORE_VISIT.includes(inq.stage)) {
+        await tx.inquiry.update({
+          where: { id: inquiryId },
+          data: { stage: 'SITE_VISIT_SCHEDULED' },
+        });
+      }
+
+      return created;
     });
 
     return sendSuccess(res, 'Site visit scheduled', { siteVisit }, 201);
@@ -75,9 +97,9 @@ const createSiteVisit = async (req, res, next) => {
 
 const listSiteVisits = async (req, res, next) => {
   try {
-    const { inquiryId, status, from, to, page = 1, pageSize = 20 } = req.query;
+    const { inquiryId, status, from, to } = req.query;
     const companyId = req.user.companyId;
-    const skip = (parseInt(page) - 1) * parseInt(pageSize);
+    const { page, pageSize, skip, take } = getPagination(req.query);
 
     const where = {
       inquiry: { companyId },
@@ -97,7 +119,7 @@ const listSiteVisits = async (req, res, next) => {
       db.siteVisit.findMany({
         where,
         skip,
-        take: parseInt(pageSize),
+        take,
         orderBy: { scheduledAt: 'asc' },
         include: SITE_VISIT_INCLUDE,
       }),
@@ -106,8 +128,8 @@ const listSiteVisits = async (req, res, next) => {
     return sendSuccess(res, 'Site visits retrieved', {
       items,
       total,
-      page: parseInt(page),
-      pageSize: parseInt(pageSize),
+      page,
+      pageSize,
     });
   } catch (err) {
     next(err);
@@ -153,11 +175,10 @@ const updateSiteVisit = async (req, res, next) => {
 
     // Only SCHEDULED, RESCHEDULED, CANCELLED allowed from this endpoint
     // COMPLETED is set by Module 3 only
-    const ALLOWED_STATUSES = ['SCHEDULED', 'RESCHEDULED', 'CANCELLED'];
-    if (status && !ALLOWED_STATUSES.includes(status)) {
+    if (status && !MANUAL_SITE_VISIT_STATUSES.includes(status)) {
       return sendError(
         res,
-        `status must be one of: ${ALLOWED_STATUSES.join(', ')} (COMPLETED is set by the site visit completion flow)`,
+        `status must be one of: ${MANUAL_SITE_VISIT_STATUSES.join(', ')} (COMPLETED is set by the site visit completion flow)`,
         400
       );
     }
@@ -167,6 +188,11 @@ const updateSiteVisit = async (req, res, next) => {
         where: { id: unitId, project: { companyId } },
       });
       if (!unit) return sendError(res, 'Unit not found', 400);
+
+      // Business Rule 4 (BUG-004): only AVAILABLE units may be selected.
+      if (unit.status !== 'AVAILABLE') {
+        return sendError(res, `Unit is not available (current status: ${unit.status})`, 400);
+      }
     }
 
     const updateData = {};
@@ -235,10 +261,16 @@ const completeSiteVisit = async (req, res, next) => {
       db.activityLog.create({
         data: {
           inquiryId: existing.inquiryId,
-          type: 'STAGE_CHANGED',
+          type: 'SITE_VISIT_COMPLETED',
           description: 'Site visit marked as completed',
           performedById: req.user.id,
         },
+      }),
+      // Advance inquiry stage to NEGOTIATION when a site visit is completed
+      // (if the inquiry is still at SITE_VISIT_SCHEDULED — BUG-020).
+      db.inquiry.updateMany({
+        where: { id: existing.inquiryId, stage: 'SITE_VISIT_SCHEDULED' },
+        data: { stage: 'NEGOTIATION' },
       }),
     ]);
 

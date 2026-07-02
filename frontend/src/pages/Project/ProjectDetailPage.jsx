@@ -298,11 +298,10 @@ const ProjectDetailPage = () => {
               >
                 <option value="AVAILABLE">Available</option>
                 <option value="SOLD">Sold</option>
-                <option value="RESERVED">Reserved</option>
               </select>
             </div>
             <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              Note: RESERVED status is automatically set by the booking process. Manual override should only be used for corrections.
+              Note: RESERVED status is set automatically by the booking process and cannot be applied manually. A unit with an active booking must be released by cancelling the booking.
             </p>
             <div className="flex justify-end gap-3 pt-2 border-t border-gray-200">
               <Button

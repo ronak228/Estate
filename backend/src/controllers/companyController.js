@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 const { sendSuccess, sendError } = require('../utils/response');
+const { getPagination } = require('../utils/pagination');
 const slugify = require('../utils/slugify');
 
 // ─── SUPER_ADMIN: Company CRUD ────────────────────────────────────────────────
@@ -89,8 +90,8 @@ const createCompany = async (req, res, next) => {
  */
 const listCompanies = async (req, res, next) => {
   try {
-    const { status, search, page = 1, pageSize = 20 } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(pageSize);
+    const { status, search } = req.query;
+    const { page, pageSize, skip, take } = getPagination(req.query);
 
     const where = {};
     if (status) where.status = status;
@@ -107,7 +108,7 @@ const listCompanies = async (req, res, next) => {
       db.company.findMany({
         where,
         skip,
-        take: parseInt(pageSize),
+        take,
         orderBy: { createdAt: 'desc' },
         include: { _count: { select: { users: true } } },
       }),
@@ -116,8 +117,8 @@ const listCompanies = async (req, res, next) => {
     return sendSuccess(res, 'Companies retrieved', {
       items: items.map(formatCompany),
       total,
-      page: parseInt(page),
-      pageSize: parseInt(pageSize),
+      page,
+      pageSize,
     });
   } catch (err) {
     next(err);
@@ -197,26 +198,48 @@ const setCompanyAdmin = async (req, res, next) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check email uniqueness (exclude existing admins of this company)
+    // Cross-tenant collision guard (BUG-006): the email is globally unique, so an
+    // email already owned by a DIFFERENT company cannot be reused here. Same-company
+    // records (e.g. a previously-deactivated admin) are allowed and reused below.
     const conflicting = await db.user.findFirst({
       where: {
         email: normalizedEmail,
-        NOT: { companyId: req.params.id, role: 'ADMIN' },
+        NOT: { companyId: req.params.id },
       },
     });
     if (conflicting) {
-      return sendError(res, 'Email is already in use', 409);
+      return sendError(res, 'Email is already in use by another company', 409);
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Upsert: deactivate old ADMIN, create new one in one transaction
+    // Rotate the company admin in one transaction.
+    // BUG-006: reappointing a previously-used email must not throw P2002. If a user
+    // with this email already exists in THIS company (including a deactivated old
+    // admin), reuse/rotate that record instead of creating a duplicate.
     const adminUser = await db.$transaction(async (tx) => {
-      // Deactivate existing admins for this company
+      // Demote any current active admins of this company.
       await tx.user.updateMany({
         where: { companyId: req.params.id, role: 'ADMIN' },
         data: { isActive: false },
       });
+
+      const existingInCompany = await tx.user.findFirst({
+        where: { companyId: req.params.id, email: normalizedEmail },
+      });
+
+      if (existingInCompany) {
+        return tx.user.update({
+          where: { id: existingInCompany.id },
+          data: {
+            fullName: fullName.trim(),
+            passwordHash,
+            role: 'ADMIN',
+            phone: phone?.trim() || null,
+            isActive: true,
+          },
+        });
+      }
 
       return tx.user.create({
         data: {
@@ -232,6 +255,9 @@ const setCompanyAdmin = async (req, res, next) => {
 
     return sendSuccess(res, 'Company admin created', { admin: formatUser(adminUser) });
   } catch (err) {
+    if (err.code === 'P2002') {
+      return sendError(res, 'Email is already in use by another company', 409);
+    }
     next(err);
   }
 };
@@ -339,8 +365,8 @@ const createEmployee = async (req, res, next) => {
  */
 const listEmployees = async (req, res, next) => {
   try {
-    const { role, isActive, search, page = 1, pageSize = 20 } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(pageSize);
+    const { role, isActive, search } = req.query;
+    const { page, pageSize, skip, take } = getPagination(req.query);
 
     const where = { companyId: req.user.companyId };
 
@@ -358,7 +384,7 @@ const listEmployees = async (req, res, next) => {
       db.user.findMany({
         where,
         skip,
-        take: parseInt(pageSize),
+        take,
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
@@ -376,8 +402,8 @@ const listEmployees = async (req, res, next) => {
     return sendSuccess(res, 'Employees retrieved', {
       items,
       total,
-      page: parseInt(page),
-      pageSize: parseInt(pageSize),
+      page,
+      pageSize,
     });
   } catch (err) {
     next(err);

@@ -1,5 +1,8 @@
 const db = require('../db');
+const { Prisma } = require('@prisma/client');
 const { sendSuccess, sendError } = require('../utils/response');
+const { getPagination } = require('../utils/pagination');
+const { VALID_PAYMENT_MODES } = require('../utils/constants');
 const { syncInventory, createSalesOrder, generateInvoice, syncCustomer } = require('../utils/erpSync');
 const generateBookingReceiptPdf = require('../utils/generateBookingReceiptPdf');
 
@@ -80,46 +83,88 @@ const createBooking = async (req, res, next) => {
       );
     }
 
+    // ── Financial invariants (BUG-008) ────────────────────────────────────────
+    // Decimal-safe cross-field validation against the accepted quotation total.
+    const quotationTotal = new Prisma.Decimal(quotation.totalAmount);
+    const finalDec = new Prisma.Decimal(finalAmount);
+    const bookingDec = new Prisma.Decimal(bookingAmount);
+    const discountDec =
+      discountAmount != null ? new Prisma.Decimal(discountAmount) : new Prisma.Decimal(0);
+
+    if (discountAmount != null && (isNaN(Number(discountAmount)) || discountDec.lt(0))) {
+      return sendError(res, 'discountAmount must be a non-negative number', 400);
+    }
+    if (discountDec.gt(quotationTotal)) {
+      return sendError(res, 'discountAmount cannot exceed the quotation total', 400);
+    }
+    if (finalDec.gt(quotationTotal)) {
+      return sendError(res, 'finalAmount cannot exceed the quotation total', 400);
+    }
+    if (bookingDec.gt(finalDec)) {
+      return sendError(res, 'bookingAmount cannot exceed finalAmount', 400);
+    }
+
     // ── Verify unit belongs to this company ───────────────────────────────────
     const unit = await db.unit.findFirst({
       where: { id: quotation.unitId, project: { companyId } },
     });
     if (!unit) return sendError(res, 'Unit not found', 404);
 
+    // ── Availability guard (BUG-001) ──────────────────────────────────────────
+    // Only an AVAILABLE unit may be booked. Reject early on a non-available unit.
+    if (unit.status !== 'AVAILABLE') {
+      return sendError(res, `Unit is not available for booking (current status: ${unit.status})`, 409);
+    }
+
     // ── DB Transaction: create booking + lock unit + advance inquiry stage ────
-    // Duplicate booking check is enforced by @unique on Booking.inquiryId at DB level.
+    // Duplicate booking (per inquiry) is enforced by @unique on Booking.inquiryId.
     // A P2002 error here will be caught and returned as a 409 by errorMiddleware.
-    const [booking] = await db.$transaction([
-      db.booking.create({
+    //
+    // Double-booking of the SAME unit (BUG-001) is prevented atomically: the unit
+    // is reserved via a conditional updateMany on { id, status: 'AVAILABLE' }.
+    // If a concurrent booking already reserved/sold the unit, count will be 0 and
+    // the transaction is rolled back — no two bookings can back one unit.
+    const booking = await db.$transaction(async (tx) => {
+      const reserved = await tx.unit.updateMany({
+        where: { id: quotation.unitId, status: 'AVAILABLE' },
+        data: { status: 'RESERVED' },
+      });
+      if (reserved.count !== 1) {
+        const err = new Error('UNIT_NOT_AVAILABLE');
+        err.code = 'UNIT_NOT_AVAILABLE';
+        throw err;
+      }
+
+      const created = await tx.booking.create({
         data: {
           inquiryId,
           quotationId,
           unitId: quotation.unitId,
-          finalAmount: Number(finalAmount),
-          discountAmount: discountAmount != null ? Number(discountAmount) : 0,
-          bookingAmount: Number(bookingAmount),
+          finalAmount: new Prisma.Decimal(finalAmount),
+          discountAmount: discountAmount != null ? new Prisma.Decimal(discountAmount) : new Prisma.Decimal(0),
+          bookingAmount: new Prisma.Decimal(bookingAmount),
           bookedById: req.user.id,
           status: 'CONFIRMED',
         },
         include: BOOKING_INCLUDE,
-      }),
-      db.unit.update({
-        where: { id: quotation.unitId },
-        data: { status: 'RESERVED' },
-      }),
-      db.inquiry.update({
+      });
+
+      await tx.inquiry.update({
         where: { id: inquiryId },
         data: { stage: 'BOOKED' },
-      }),
-      db.activityLog.create({
+      });
+
+      await tx.activityLog.create({
         data: {
           inquiryId,
-          type: 'STAGE_CHANGED',
+          type: 'BOOKING_CONFIRMED',
           description: `Booking confirmed — Unit ${unit.unitNumber}, Final Amount: ₹${Number(finalAmount).toLocaleString('en-IN')}`,
           performedById: req.user.id,
         },
-      }),
-    ]);
+      });
+
+      return created;
+    });
 
     // ── ERP Sync (after commit — never inside the transaction) ────────────────
     // Per ERP contract §3: failures are logged; booking is still valid; erpSyncedAt stays null.
@@ -177,17 +222,20 @@ const createBooking = async (req, res, next) => {
 
     return sendSuccess(res, 'Booking confirmed', { booking }, 201);
   } catch (err) {
+    // Atomic availability guard lost the race (BUG-001) — unit already reserved/sold.
+    if (err && err.code === 'UNIT_NOT_AVAILABLE') {
+      return sendError(res, 'Unit is no longer available for booking', 409);
+    }
     next(err);
   }
 };
 
 // ─── GET /api/bookings ────────────────────────────────────────────────────────
-
 const listBookings = async (req, res, next) => {
   try {
-    const { status, search, page = 1, pageSize = 20 } = req.query;
+    const { status, search } = req.query;
     const companyId = req.user.companyId;
-    const skip = (parseInt(page) - 1) * parseInt(pageSize);
+    const { page, pageSize, skip, take } = getPagination(req.query);
 
     const where = {
       inquiry: { companyId },
@@ -207,7 +255,7 @@ const listBookings = async (req, res, next) => {
       db.booking.findMany({
         where,
         skip,
-        take: parseInt(pageSize),
+        take,
         orderBy: { createdAt: 'desc' },
         include: {
           inquiry: {
@@ -231,8 +279,8 @@ const listBookings = async (req, res, next) => {
     return sendSuccess(res, 'Bookings retrieved', {
       items,
       total,
-      page: parseInt(page),
-      pageSize: parseInt(pageSize),
+      page,
+      pageSize,
     });
   } catch (err) {
     next(err);
@@ -413,10 +461,8 @@ const addPayment = async (req, res, next) => {
       return sendError(res, 'amount must be a positive number', 400);
     }
 
-    const VALID_MODES = ['CASH', 'CHEQUE', 'BANK_TRANSFER', 'UPI', 'CARD', 'OTHER'];
-    if (!mode) return sendError(res, 'mode is required', 400);
-    if (!VALID_MODES.includes(mode)) {
-      return sendError(res, `mode must be one of: ${VALID_MODES.join(', ')}`, 400);
+    if (!VALID_PAYMENT_MODES.includes(mode)) {
+      return sendError(res, `mode must be one of: ${VALID_PAYMENT_MODES.join(', ')}`, 400);
     }
 
     if (!paidAt) return sendError(res, 'paidAt is required', 400);
@@ -433,10 +479,32 @@ const addPayment = async (req, res, next) => {
     });
     if (!booking) return sendError(res, 'Booking not found', 404);
 
+    // ── Payment invariants (BUG-008) ──────────────────────────────────────────
+    // No payments against a cancelled booking.
+    if (booking.status === 'CANCELLED') {
+      return sendError(res, 'Cannot record a payment against a cancelled booking', 400);
+    }
+
+    // Prevent over-payment: cumulative payments must not exceed finalAmount.
+    const paidAgg = await db.bookingPayment.aggregate({
+      where: { bookingId: booking.id },
+      _sum: { amount: true },
+    });
+    const paidSoFar = new Prisma.Decimal(paidAgg._sum.amount || 0);
+    const newTotal = paidSoFar.plus(new Prisma.Decimal(amount));
+    if (newTotal.gt(new Prisma.Decimal(booking.finalAmount))) {
+      const remaining = new Prisma.Decimal(booking.finalAmount).minus(paidSoFar);
+      return sendError(
+        res,
+        `Payment exceeds the remaining balance (₹${Number(remaining).toLocaleString('en-IN')}) for this booking`,
+        400
+      );
+    }
+
     const payment = await db.bookingPayment.create({
       data: {
         bookingId: booking.id,
-        amount: Number(amount),
+        amount: new Prisma.Decimal(amount),
         mode,
         paidAt: paidAtDate,
         referenceNumber: referenceNumber?.trim() || null,
@@ -477,6 +545,73 @@ const listPayments = async (req, res, next) => {
   }
 };
 
+// ─── POST /api/bookings/:id/cancel ───────────────────────────────────────────
+//
+// Cancels a CONFIRMED booking and atomically releases its unit back to AVAILABLE
+// and reverts the inquiry from BOOKED to NEGOTIATION (BUG-011).
+
+const cancelBooking = async (req, res, next) => {
+  try {
+    const { reason } = req.body;
+    const companyId = req.user.companyId;
+
+    const booking = await db.booking.findFirst({
+      where: {
+        id: req.params.id,
+        inquiry: { companyId },
+      },
+      include: {
+        unit: { select: { id: true, unitNumber: true } },
+      },
+    });
+    if (!booking) return sendError(res, 'Booking not found', 404);
+
+    if (booking.status === 'CANCELLED') {
+      return sendError(res, 'Booking is already cancelled', 400);
+    }
+
+    const updated = await db.$transaction(async (tx) => {
+      const cancelled = await tx.booking.update({
+        where: { id: booking.id },
+        data: { status: 'CANCELLED' },
+        include: BOOKING_INCLUDE,
+      });
+
+      // Release the unit back to AVAILABLE (only if it is still RESERVED by this
+      // booking — never downgrade a unit that was manually marked SOLD elsewhere).
+      await tx.unit.updateMany({
+        where: { id: booking.unitId, status: 'RESERVED' },
+        data: { status: 'AVAILABLE' },
+      });
+
+      // Revert the inquiry out of BOOKED back to NEGOTIATION.
+      await tx.inquiry.update({
+        where: { id: booking.inquiryId },
+        data: { stage: 'NEGOTIATION' },
+      });
+
+      await tx.activityLog.create({
+        data: {
+          inquiryId: booking.inquiryId,
+          type: 'BOOKING_CANCELLED',
+          description: `Booking cancelled — Unit ${booking.unit.unitNumber} released${reason?.trim() ? ` (${reason.trim()})` : ''}`,
+          performedById: req.user.id,
+        },
+      });
+
+      return cancelled;
+    });
+
+    // NOTE: ERP reversal is intentionally not triggered here — the Phase 1 ERP
+    // module (erpSync.js) is a stub with no reversal contract. When the real ERP
+    // is integrated, a reversal call belongs here (after the transaction commits).
+
+    return sendSuccess(res, 'Booking cancelled', { booking: updated });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createBooking,
   listBookings,
@@ -485,4 +620,5 @@ module.exports = {
   retryErpSync,
   addPayment,
   listPayments,
+  cancelBooking,
 };

@@ -47,6 +47,12 @@ const BookingDetailPage = () => {
   const [erpSyncing, setErpSyncing] = useState(false);
   const [erpMessage, setErpMessage] = useState('');
 
+  // Cancellation
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState('');
+
   // Download
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
@@ -128,6 +134,14 @@ const BookingDetailPage = () => {
     fetchBooking();
   };
 
+  const handleDownloadDocument = async (doc) => {
+    const blob = await bookingDocumentService.downloadDocument(id, doc.id);
+    const url = window.URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    // Revoke shortly after to allow the new tab to load the resource.
+    setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+  };
+
   const handleRetryErpSync = async () => {
     setErpSyncing(true);
     setErpMessage('');
@@ -139,6 +153,21 @@ const BookingDetailPage = () => {
       setErpMessage(err.response?.data?.message || 'ERP sync failed');
     } finally {
       setErpSyncing(false);
+    }
+  };
+
+  const handleCancelBooking = async () => {
+    setCancelling(true);
+    setCancelError('');
+    try {
+      await bookingService.cancelBooking(id, cancelReason);
+      setCancelOpen(false);
+      setCancelReason('');
+      fetchBooking();
+    } catch (err) {
+      setCancelError(err.response?.data?.message || 'Failed to cancel booking');
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -170,6 +199,16 @@ const BookingDetailPage = () => {
             >
               Download Receipt
             </Button>
+            {isManager && booking.status === 'CONFIRMED' && (
+              <Button
+                variant="outline"
+                size="sm"
+                icon={AlertCircle}
+                onClick={() => { setCancelError(''); setCancelReason(''); setCancelOpen(true); }}
+              >
+                Cancel Booking
+              </Button>
+            )}
           </div>
         }
       />
@@ -199,6 +238,7 @@ const BookingDetailPage = () => {
               documents={documents}
               onUpload={handleUploadDocument}
               onDelete={handleDeleteDocument}
+              onDownload={handleDownloadDocument}
               uploading={uploading}
               uploadError={uploadError}
               canDelete={isManager}
@@ -387,6 +427,47 @@ const BookingDetailPage = () => {
           submitting={paymentSubmitting}
           apiError={paymentError}
         />
+      </Modal>
+
+      {/* Cancel Booking Modal */}
+      <Modal
+        isOpen={cancelOpen}
+        onClose={() => { setCancelOpen(false); setCancelError(''); }}
+        title="Cancel Booking"
+        size="md"
+      >
+        <div className="flex flex-col gap-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-700">
+            Cancelling this booking will release the unit back to <strong>Available</strong> and
+            revert the inquiry to the <strong>Negotiation</strong> stage. This cannot be undone.
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="cancelReason" className="text-sm font-medium text-gray-700">
+              Reason (optional)
+            </label>
+            <textarea
+              id="cancelReason"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              placeholder="e.g. Customer withdrew"
+            />
+          </div>
+          {cancelError && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {cancelError}
+            </div>
+          )}
+          <div className="flex justify-end gap-3 pt-2 border-t border-gray-200">
+            <Button variant="ghost" onClick={() => { setCancelOpen(false); setCancelError(''); }}>
+              Keep Booking
+            </Button>
+            <Button variant="danger" loading={cancelling} onClick={handleCancelBooking}>
+              Cancel Booking
+            </Button>
+          </div>
+        </div>
       </Modal>
     </PageLayout>
   );

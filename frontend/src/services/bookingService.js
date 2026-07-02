@@ -29,6 +29,11 @@ const bookingService = {
     return res.data.data;
   },
 
+  cancelBooking: async (id, reason) => {
+    const res = await api.post(`/bookings/${id}/cancel`, { reason });
+    return res.data.data.booking;
+  },
+
   addPayment: async (bookingId, data) => {
     const res = await api.post(`/bookings/${bookingId}/payments`, data);
     return res.data.data.payment;

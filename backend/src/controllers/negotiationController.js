@@ -1,4 +1,5 @@
 const db = require('../db');
+const { Prisma } = require('@prisma/client');
 const { sendSuccess, sendError } = require('../utils/response');
 
 // ─── Shared include ───────────────────────────────────────────────────────────
@@ -40,8 +41,8 @@ const createNegotiation = async (req, res, next) => {
       data: {
         inquiryId,
         quotationId: quotationId || null,
-        offeredPrice: Number(offeredPrice),
-        discountAmount: discountAmount != null ? Number(discountAmount) : 0,
+        offeredPrice: new Prisma.Decimal(offeredPrice),
+        discountAmount: discountAmount != null ? new Prisma.Decimal(discountAmount) : new Prisma.Decimal(0),
         notes: notes?.trim() || null,
         createdById: req.user.id,
       },
@@ -52,7 +53,7 @@ const createNegotiation = async (req, res, next) => {
     await db.activityLog.create({
       data: {
         inquiryId,
-        type: 'STAGE_CHANGED',
+        type: 'NEGOTIATION_RECORDED',
         description: `Negotiation offer recorded — Offered: ₹${Number(offeredPrice).toLocaleString('en-IN')}${discountAmount ? `, Discount: ₹${Number(discountAmount).toLocaleString('en-IN')}` : ''}`,
         performedById: req.user.id,
       },

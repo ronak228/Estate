@@ -1,15 +1,10 @@
 const db = require('../db');
 const { sendSuccess, sendError } = require('../utils/response');
+const { VALID_DOCUMENT_TYPES } = require('../utils/constants');
 const fs = require('fs');
 const path = require('path');
 
-const VALID_DOCUMENT_TYPES = [
-  'BOOKING_FORM',
-  'SIGNED_AGREEMENT',
-  'ID_PROOF',
-  'PAYMENT_PROOF',
-  'OTHER',
-];
+
 
 // ─── POST /api/bookings/:id/documents ────────────────────────────────────────
 
@@ -129,4 +124,58 @@ const deleteDocument = async (req, res, next) => {
   }
 };
 
-module.exports = { uploadDocument, listDocuments, deleteDocument };
+// ─── GET /api/bookings/:id/documents/:documentId/download ────────────────────
+//
+// Authenticated, tenant-scoped document download (BUG-002).
+// Booking documents are NOT served from the public static path anymore; they
+// are streamed here only after verifying the booking belongs to the caller's
+// company. Returns the raw file (not the JSON envelope).
+
+const CONTENT_TYPES = {
+  '.pdf': 'application/pdf',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+};
+
+const downloadDocument = async (req, res, next) => {
+  try {
+    const companyId = req.user.companyId;
+
+    const booking = await db.booking.findFirst({
+      where: {
+        id: req.params.id,
+        inquiry: { companyId },
+      },
+    });
+    if (!booking) return sendError(res, 'Booking not found', 404);
+
+    const document = await db.bookingDocument.findFirst({
+      where: {
+        id: req.params.documentId,
+        bookingId: booking.id,
+      },
+    });
+    if (!document) return sendError(res, 'Document not found', 404);
+
+    // fileUrl is stored as "/uploads/bookings/<file>" — resolve to disk path.
+    const filePath = path.join(process.cwd(), document.fileUrl);
+    if (!fs.existsSync(filePath)) return sendError(res, 'File not found on server', 404);
+
+    const ext = path.extname(document.fileName || filePath).toLowerCase();
+    const contentType = CONTENT_TYPES[ext] || 'application/octet-stream';
+    const safeName = (document.fileName || 'document').replace(/"/g, '');
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${safeName}"`);
+
+    const stream = fs.createReadStream(filePath);
+    stream.on('error', (err) => next(err));
+    stream.pipe(res);
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { uploadDocument, listDocuments, deleteDocument, downloadDocument };

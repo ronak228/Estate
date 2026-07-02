@@ -1,5 +1,7 @@
 const db = require('../db');
 const { sendSuccess, sendError } = require('../utils/response');
+const { getPagination } = require('../utils/pagination');
+const { VALID_INQUIRY_SOURCES, VALID_INQUIRY_STAGES } = require('../utils/constants');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -40,6 +42,11 @@ async function resolveContact(tx, companyId, contactId, newContact) {
       fullName: newContact.fullName.trim(),
       phone: newContact.phone.trim(),
       email: newContact.email?.trim() || null,
+      company_name: newContact.company_name?.trim() || null,
+      address: newContact.address?.trim() || null,
+      budgetMin: newContact.budgetMin != null ? parseInt(newContact.budgetMin) : null,
+      budgetMax: newContact.budgetMax != null ? parseInt(newContact.budgetMax) : null,
+      preferredArea: newContact.preferredArea?.trim() || null,
     },
   });
 
@@ -56,16 +63,21 @@ const createInquiry = async (req, res, next) => {
     if (!assignedToId) return sendError(res, 'assignedToId is required', 400);
     if (!source) return sendError(res, 'source is required', 400);
 
-    const VALID_SOURCES = [
-      'WALK_IN', 'PHONE_CALL', 'WEBSITE', 'WHATSAPP', 'REFERRAL', 'ADVERTISEMENT', 'OTHER',
-    ];
+    const VALID_SOURCES = VALID_INQUIRY_SOURCES;
     if (!VALID_SOURCES.includes(source)) {
       return sendError(res, `source must be one of: ${VALID_SOURCES.join(', ')}`, 400);
     }
 
+    // Assignment authority (BUG-009): assigning an inquiry to another user is a
+    // manager-only action (see PATCH /:id/assign). A SALES_EXECUTIVE may only
+    // self-assign at creation, so force the assignee to themselves regardless of
+    // the requested assignedToId. ADMIN/MANAGER may assign to anyone.
+    const effectiveAssignedToId =
+      req.user.role === 'SALES_EXECUTIVE' ? req.user.id : assignedToId;
+
     // Verify assignedTo belongs to same company
     const assignee = await db.user.findFirst({
-      where: { id: assignedToId, companyId, isActive: true },
+      where: { id: effectiveAssignedToId, companyId, isActive: true },
     });
     if (!assignee) return sendError(res, 'assignedToId is not a valid active user in your company', 400);
 
@@ -90,7 +102,7 @@ const createInquiry = async (req, res, next) => {
           contactId: resolvedContactId,
           projectId: projectId || null,
           brokerId: brokerId || null,
-          assignedToId,
+          assignedToId: effectiveAssignedToId,
           createdById: req.user.id,
           source,
           notes: notes?.trim() || null,
@@ -102,7 +114,7 @@ const createInquiry = async (req, res, next) => {
         data: {
           inquiryId: created.id,
           type: 'CREATED',
-          description: `Inquiry created by ${req.user.id === assignedToId ? 'and assigned to self' : `and assigned to ${assignee.fullName}`}`,
+          description: `Inquiry created by ${req.user.id === effectiveAssignedToId ? 'and assigned to self' : `and assigned to ${assignee.fullName}`}`,
           performedById: req.user.id,
         },
       });
@@ -121,9 +133,9 @@ const createInquiry = async (req, res, next) => {
 
 const listInquiries = async (req, res, next) => {
   try {
-    const { stage, source, assignedToId, search, page = 1, pageSize = 20 } = req.query;
+    const { stage, source, assignedToId, search } = req.query;
     const companyId = req.user.companyId;
-    const skip = (parseInt(page) - 1) * parseInt(pageSize);
+    const { page, pageSize, skip, take } = getPagination(req.query);
 
     const where = { companyId };
 
@@ -145,7 +157,7 @@ const listInquiries = async (req, res, next) => {
       db.inquiry.findMany({
         where,
         skip,
-        take: parseInt(pageSize),
+        take,
         orderBy: { createdAt: 'desc' },
         include: INQUIRY_INCLUDE,
       }),
@@ -154,8 +166,8 @@ const listInquiries = async (req, res, next) => {
     return sendSuccess(res, 'Inquiries retrieved', {
       items,
       total,
-      page: parseInt(page),
-      pageSize: parseInt(pageSize),
+      page,
+      pageSize,
     });
   } catch (err) {
     next(err);
@@ -205,11 +217,8 @@ const updateInquiry = async (req, res, next) => {
     });
     if (!existing) return sendError(res, 'Inquiry not found', 404);
 
-    const VALID_SOURCES = [
-      'WALK_IN', 'PHONE_CALL', 'WEBSITE', 'WHATSAPP', 'REFERRAL', 'ADVERTISEMENT', 'OTHER',
-    ];
-    if (source && !VALID_SOURCES.includes(source)) {
-      return sendError(res, `source must be one of: ${VALID_SOURCES.join(', ')}`, 400);
+    if (source && !VALID_INQUIRY_SOURCES.includes(source)) {
+      return sendError(res, `source must be one of: ${VALID_INQUIRY_SOURCES.join(', ')}`, 400);
     }
 
     if (projectId) {
@@ -238,7 +247,7 @@ const updateInquiry = async (req, res, next) => {
       await tx.activityLog.create({
         data: {
           inquiryId: updated.id,
-          type: 'NOTE_ADDED',
+          type: 'INQUIRY_UPDATED',
           description: 'Inquiry details updated',
           performedById: req.user.id,
         },
@@ -304,18 +313,26 @@ const assignInquiry = async (req, res, next) => {
 
 // ─── PATCH /api/inquiries/:id/stage ──────────────────────────────────────────
 
+// Allowed manual stage transitions (BUG-016). BOOKED is intentionally NOT a
+// valid manual target — it is reached only through the booking flow. Transitions
+// out of BOOKED are also disallowed here (managed by booking cancellation).
+const STAGE_TRANSITIONS = {
+  NEW: ['CONTACTED', 'QUALIFIED', 'NOT_INTERESTED'],
+  CONTACTED: ['QUALIFIED', 'SITE_VISIT_SCHEDULED', 'NOT_INTERESTED'],
+  QUALIFIED: ['CONTACTED', 'SITE_VISIT_SCHEDULED', 'NEGOTIATION', 'NOT_INTERESTED'],
+  SITE_VISIT_SCHEDULED: ['QUALIFIED', 'NEGOTIATION', 'NOT_INTERESTED'],
+  NEGOTIATION: ['SITE_VISIT_SCHEDULED', 'NOT_INTERESTED'],
+  BOOKED: [], // managed by booking / cancellation flows only
+  NOT_INTERESTED: ['NEW', 'CONTACTED'], // allow reopening a lost lead
+};
+
 const changeStage = async (req, res, next) => {
   try {
     const { stage } = req.body;
     const companyId = req.user.companyId;
 
-    const VALID_STAGES = [
-      'NEW', 'CONTACTED', 'QUALIFIED', 'SITE_VISIT_SCHEDULED', 'NEGOTIATION', 'BOOKED', 'NOT_INTERESTED',
-    ];
-
-    if (!stage) return sendError(res, 'stage is required', 400);
-    if (!VALID_STAGES.includes(stage)) {
-      return sendError(res, `stage must be one of: ${VALID_STAGES.join(', ')}`, 400);
+    if (!VALID_INQUIRY_STAGES.includes(stage)) {
+      return sendError(res, `stage must be one of: ${VALID_INQUIRY_STAGES.join(', ')}`, 400);
     }
 
     const existing = await db.inquiry.findFirst({
@@ -323,6 +340,30 @@ const changeStage = async (req, res, next) => {
       select: { id: true, stage: true },
     });
     if (!existing) return sendError(res, 'Inquiry not found', 404);
+
+    // BOOKED can never be set manually — it is driven by the booking flow.
+    if (stage === 'BOOKED') {
+      return sendError(res, 'Stage BOOKED is set automatically by the booking flow and cannot be assigned manually', 400);
+    }
+
+    // BUG-024: QUALIFIED has a dedicated endpoint (qualifyInquiry) which has
+    // richer notes support and an already-qualified guard — route through it.
+    if (stage === 'QUALIFIED') {
+      return qualifyInquiry(req, res, next);
+    }
+
+    // Enforce the transition state machine.
+    if (existing.stage === stage) {
+      return sendError(res, `Inquiry is already in stage ${stage}`, 400);
+    }
+    const allowed = STAGE_TRANSITIONS[existing.stage] || [];
+    if (!allowed.includes(stage)) {
+      return sendError(
+        res,
+        `Invalid stage transition from ${existing.stage} to ${stage}`,
+        400
+      );
+    }
 
     const inquiry = await db.$transaction(async (tx) => {
       const updated = await tx.inquiry.update({
@@ -567,7 +608,7 @@ const qualifyInquiry = async (req, res, next) => {
       await tx.activityLog.create({
         data: {
           inquiryId: updated.id,
-          type: 'STAGE_CHANGED',
+          type: 'INQUIRY_QUALIFIED',
           description: notes?.trim()
             ? `Inquiry qualified — ${notes.trim()}`
             : `Stage changed from ${existing.stage} to QUALIFIED`,

@@ -25,12 +25,6 @@ const STATUS_COLORS = {
   NEUTRAL: 'bg-gray-100 text-gray-600',
   INFO: 'bg-blue-100 text-blue-700',
 
-  // ─── Project Status labels ────────────────────────────────────────────────────
-  UPCOMING: 'Upcoming',
-  UNDER_CONSTRUCTION: 'Under Construction',
-  READY_TO_MOVE: 'Ready to Move',
-  // COMPLETED already mapped above
-
   // Role display
   SUPER_ADMIN: 'bg-purple-100 text-purple-700',
   ADMIN: 'bg-indigo-100 text-indigo-700',
@@ -105,6 +99,12 @@ const STATUS_LABELS = {
   SUSPENDED: 'Suspended',
   true: 'Active',
   false: 'Inactive',
+
+  // ─── Project Status labels (Project & Unit Inventory) ─────────────────────────
+  UPCOMING: 'Upcoming',
+  UNDER_CONSTRUCTION: 'Under Construction',
+  READY_TO_MOVE: 'Ready to Move',
+  // COMPLETED label is defined in the Site Visit section below (same value)
 
   // Inquiry Stage labels
   NEW: 'New',

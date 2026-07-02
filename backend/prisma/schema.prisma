@@ -49,6 +49,16 @@ enum ActivityType {
   FOLLOW_UP_COMPLETED
   NOTE_ADDED
   MARKED_NOT_INTERESTED
+  // ─── Extended types (BUG-018) ─────────────────────────────────────────────
+  QUOTATION_CREATED
+  QUOTATION_DECISION_UPDATED
+  NEGOTIATION_RECORDED
+  SITE_VISIT_COMPLETED
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  INTERACTION_LOGGED
+  INQUIRY_UPDATED
+  INQUIRY_QUALIFIED
 }
 
 // ─── Project & Unit Inventory Enums ──────────────────────────────────────────
@@ -163,6 +173,8 @@ model User {
   uploadedDocuments   BookingDocument[]
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
+
+  @@index([companyId])
 }
 
 // ─── Module 1: Inquiry Management ────────────────────────────────────────────
@@ -198,6 +210,8 @@ model Project {
   units     Unit[]
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+
+  @@index([companyId])
 }
 
 model Broker {
@@ -209,6 +223,8 @@ model Broker {
   company_name String?
   inquiries Inquiry[]
   createdAt DateTime  @default(now())
+
+  @@index([companyId])
 }
 
 model Inquiry {
@@ -237,6 +253,14 @@ model Inquiry {
   booking        Booking?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+
+  @@index([companyId])
+  @@index([contactId])
+  @@index([projectId])
+  @@index([brokerId])
+  @@index([assignedToId])
+  @@index([createdById])
+  @@index([stage])
 }
 
 model FollowUp {
@@ -249,6 +273,10 @@ model FollowUp {
   createdById String
   createdBy   User      @relation(fields: [createdById], references: [id])
   createdAt   DateTime  @default(now())
+
+  @@index([inquiryId])
+  @@index([createdById])
+  @@index([scheduledAt])
 }
 
 model ActivityLog {
@@ -260,6 +288,9 @@ model ActivityLog {
   performedById String
   performedBy   User         @relation(fields: [performedById], references: [id])
   createdAt     DateTime     @default(now())
+
+  @@index([inquiryId])
+  @@index([performedById])
 }
 
 // ─── Module 2: Lead Qualification & Contact Management ────────────────────────
@@ -276,6 +307,10 @@ model Interaction {
   createdById String
   createdBy   User            @relation(fields: [createdById], references: [id])
   createdAt   DateTime        @default(now())
+
+  @@index([contactId])
+  @@index([inquiryId])
+  @@index([createdById])
 }
 
 model SiteVisit {
@@ -291,6 +326,12 @@ model SiteVisit {
   createdBy   User            @relation(fields: [createdById], references: [id])
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+
+  @@index([inquiryId])
+  @@index([unitId])
+  @@index([createdById])
+  @@index([status])
+  @@index([scheduledAt])
 }
 
 // Unit — real implementation (replaces stub from Module 2 plan).
@@ -299,11 +340,11 @@ model Unit {
   projectId    String
   project      Project     @relation(fields: [projectId], references: [id])
   unitNumber   String
-  width        Decimal     // feet
-  length       Decimal     // feet
-  area         Decimal     // sq. ft. — calculated: width × length
-  pricePerSqFt Decimal     // ₹ per sq. ft.
-  basePrice    Decimal     // calculated: area × pricePerSqFt
+  width        Decimal     @db.Decimal(10, 4) // feet — 4dp for dimension precision
+  length       Decimal     @db.Decimal(10, 4) // feet
+  area         Decimal     @db.Decimal(14, 4) // sq. ft. — calculated: width × length
+  pricePerSqFt Decimal     @db.Decimal(14, 2) // ₹ per sq. ft.
+  basePrice    Decimal     @db.Decimal(14, 2) // calculated: area × pricePerSqFt
   status       UnitStatus  @default(AVAILABLE)
   siteVisits   SiteVisit[]
   quotations   Quotation[]
@@ -312,6 +353,7 @@ model Unit {
   updatedAt    DateTime    @updatedAt
 
   @@unique([projectId, unitNumber])
+  @@index([status])
 }
 
 // ─── Module 3: Property Viewing & Proposal ────────────────────────────────────
@@ -324,9 +366,8 @@ model Quotation {
   unit         Unit              @relation(fields: [unitId], references: [id], onDelete: Restrict)
   // Snapshot of Unit.price at quote creation time — never re-read live after creation.
   // A price change on the unit must NOT silently alter a quote already sent to a customer.
-  basePrice    Decimal
-  // Computed server-side: basePrice + sum(charges.amount). Never trusted from client.
-  totalAmount  Decimal
+  basePrice    Decimal           @db.Decimal(14, 2)
+  totalAmount  Decimal           @db.Decimal(14, 2)
   decision     QuotationDecision @default(PENDING)
   validUntil   DateTime?
   charges      QuotationCharge[]
@@ -336,6 +377,11 @@ model Quotation {
   createdBy    User              @relation(fields: [createdById], references: [id])
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
+
+  @@index([inquiryId])
+  @@index([unitId])
+  @@index([createdById])
+  @@index([decision])
 }
 
 model QuotationCharge {
@@ -343,7 +389,9 @@ model QuotationCharge {
   quotationId String
   quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
   label       String    // e.g. "Registration Charges", "Maintenance Deposit"
-  amount      Decimal
+  amount      Decimal   @db.Decimal(14, 2)
+
+  @@index([quotationId])
 }
 
 // ─── Module 4: Sales Negotiation & Booking ────────────────────────────────────
@@ -354,12 +402,16 @@ model Negotiation {
   inquiry        Inquiry    @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
   quotationId    String?
   quotation      Quotation? @relation(fields: [quotationId], references: [id], onDelete: SetNull)
-  offeredPrice   Decimal
-  discountAmount Decimal    @default(0)
+  offeredPrice   Decimal           @db.Decimal(14, 2)
+  discountAmount Decimal           @default(0) @db.Decimal(14, 2)
   notes          String?
   createdById    String
   createdBy      User       @relation(fields: [createdById], references: [id])
   createdAt      DateTime   @default(now())
+
+  @@index([inquiryId])
+  @@index([quotationId])
+  @@index([createdById])
 }
 
 model Booking {
@@ -370,9 +422,9 @@ model Booking {
   quotation        Quotation       @relation(fields: [quotationId], references: [id], onDelete: Restrict)
   unitId           String
   unit             Unit            @relation(fields: [unitId], references: [id], onDelete: Restrict)
-  finalAmount      Decimal
-  discountAmount   Decimal         @default(0)
-  bookingAmount    Decimal
+  finalAmount      Decimal         @db.Decimal(14, 2)
+  discountAmount   Decimal         @default(0) @db.Decimal(14, 2)
+  bookingAmount    Decimal         @db.Decimal(14, 2)
   status           BookingStatus   @default(CONFIRMED)
   erpSyncedAt      DateTime?
   erpSalesOrderRef String?
@@ -382,19 +434,27 @@ model Booking {
   documents        BookingDocument[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
+
+  @@index([quotationId])
+  @@index([unitId])
+  @@index([bookedById])
+  @@index([status])
 }
 
 model BookingPayment {
   id              String      @id @default(uuid())
   bookingId       String
   booking         Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  amount          Decimal
+  amount          Decimal     @db.Decimal(14, 2)
   mode            PaymentMode
   paidAt          DateTime
   referenceNumber String?
   createdById     String
   createdBy       User        @relation(fields: [createdById], references: [id])
   createdAt       DateTime    @default(now())
+
+  @@index([bookingId])
+  @@index([createdById])
 }
 
 model BookingDocument {
@@ -407,4 +467,7 @@ model BookingDocument {
   uploadedById String
   uploadedBy   User         @relation(fields: [uploadedById], references: [id])
   createdAt    DateTime     @default(now())
+
+  @@index([bookingId])
+  @@index([uploadedById])
 }

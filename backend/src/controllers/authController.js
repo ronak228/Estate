@@ -143,6 +143,11 @@ const changePassword = async (req, res, next) => {
 /**
  * POST /api/auth/logout
  * Any authenticated — client-side token discard; endpoint exists for symmetry/auditing.
+ *
+ * BUG-034 (known limitation, Phase 1): JWT tokens are stateless and have no
+ * server-side revocation. A stolen/leaked token remains valid until its 8h expiry.
+ * When production hardening is required, replace this with a token denylist
+ * (e.g., Redis-backed) or switch to short-lived tokens + refresh-token rotation.
  */
 const logout = async (req, res, next) => {
   try {

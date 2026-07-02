@@ -28,7 +28,6 @@ const syncInventory = async ({ companyId, unitId, bookingId }) => {
   console.log('[ERP STUB] syncInventory', { companyId, unitId, bookingId });
   return { success: true, refId: `STUB-INV-${bookingId.slice(0, 8).toUpperCase()}` };
 };
-
 /**
  * Create a Sales Order in ERP for this booking.
  * @param {{ companyId: string, bookingId: string, unitId: string, contactId: string, finalAmount: number, discountAmount: number, bookingAmount: number }} params
@@ -44,6 +43,7 @@ const createSalesOrder = async ({
   bookingAmount,
 }) => {
   // Stub — replace with: await axios.post(`${ERP_BASE_URL}/sales-orders`, { ... })
+  // BUG-033: log IDs only — never log financial amounts or contact data
   console.log('[ERP STUB] createSalesOrder', { companyId, bookingId, unitId, contactId });
   return { success: true, refId: `ERP-SO-${bookingId.slice(0, 8).toUpperCase()}` };
 };
@@ -55,7 +55,8 @@ const createSalesOrder = async ({
  */
 const generateInvoice = async ({ companyId, salesOrderRef, amount }) => {
   // Stub — replace with: await axios.post(`${ERP_BASE_URL}/invoices`, { companyId, salesOrderRef, amount })
-  console.log('[ERP STUB] generateInvoice', { companyId, salesOrderRef, amount });
+  // BUG-033: omit amount from log to avoid financial data in logs
+  console.log('[ERP STUB] generateInvoice', { companyId, salesOrderRef });
   return { success: true, refId: `ERP-INV-${salesOrderRef}` };
 };
 
@@ -67,7 +68,8 @@ const generateInvoice = async ({ companyId, salesOrderRef, amount }) => {
  */
 const syncCustomer = async ({ companyId, contactId, fullName, phone, email, address }) => {
   // Stub — replace with: await axios.post(`${ERP_BASE_URL}/customers/sync`, { ... })
-  console.log('[ERP STUB] syncCustomer', { companyId, contactId, fullName });
+  // BUG-033: log IDs only — fullName/phone/email/address are PII, never log them
+  console.log('[ERP STUB] syncCustomer', { companyId, contactId });
   return { success: true, refId: `ERP-CUST-${contactId.slice(0, 8).toUpperCase()}` };
 };
 

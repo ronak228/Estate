@@ -9,11 +9,13 @@ const {
   retryErpSync,
   addPayment,
   listPayments,
+  cancelBooking,
 } = require('../controllers/bookingController');
 const {
   uploadDocument,
   listDocuments,
   deleteDocument,
+  downloadDocument,
 } = require('../controllers/bookingDocumentController');
 const { bookingDocumentUploader } = require('../middleware/uploadMiddleware');
 
@@ -31,6 +33,9 @@ router.get('/:id/receipt', authenticate, authorize(...CRM), getBookingReceipt);
 // ERP retry (ADMIN/MANAGER only — money-sensitive action)
 router.post('/:id/sync-erp', authenticate, authorize(...MANAGERS), retryErpSync);
 
+// Cancellation — releases the unit and reverts the inquiry (ADMIN/MANAGER only)
+router.post('/:id/cancel', authenticate, authorize(...MANAGERS), cancelBooking);
+
 // ─── Payments ─────────────────────────────────────────────────────────────────
 router.post('/:id/payments', authenticate, authorize(...MANAGERS), addPayment);
 router.get('/:id/payments', authenticate, authorize(...CRM), listPayments);
@@ -44,6 +49,12 @@ router.post(
   uploadDocument
 );
 router.get('/:id/documents', authenticate, authorize(...CRM), listDocuments);
+router.get(
+  '/:id/documents/:documentId/download',
+  authenticate,
+  authorize(...CRM),
+  downloadDocument
+);
 router.delete('/:id/documents/:documentId', authenticate, authorize(...MANAGERS), deleteDocument);
 
 module.exports = router;
