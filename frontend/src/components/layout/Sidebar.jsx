@@ -12,6 +12,7 @@ import {
   User,
   LogOut,
   Layers,
+  Receipt,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -63,6 +64,13 @@ const NAV_ITEMS = [
     label: 'Bookings',
     path: '/bookings',
     icon: BookOpen,
+    roles: ['ADMIN', 'MANAGER', 'SALES_EXECUTIVE'],
+    group: 'crm',
+  },
+  {
+    label: 'Transactions',
+    path: '/transactions',
+    icon: Receipt,
     roles: ['ADMIN', 'MANAGER', 'SALES_EXECUTIVE'],
     group: 'crm',
   },

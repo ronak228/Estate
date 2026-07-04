@@ -264,6 +264,7 @@ const updateDecision = async (req, res, next) => {
           inquiryId: existing.inquiryId,
           type: 'QUOTATION_DECISION_UPDATED',
           description: `Quotation decision updated to: ${decision}`,
+          performedById: req.user.id,
         },
       }),
     ]);

@@ -109,6 +109,74 @@ enum BookingStatus {
   CANCELLED
 }
 
+// ─── Module 6 Enums ───────────────────────────────────────────────────────────
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+}
+
+enum TransactionPaymentStatus {
+  PENDING
+  RECONCILED
+}
+
+enum TitleTransferStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TransactionStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// ─── Module 5 Enums ───────────────────────────────────────────────────────────
+
+enum ContractDocumentType {
+  SALE_AGREEMENT
+  ALLOTMENT_LETTER
+  NOC
+  TITLE_DEED
+  CUSTOMER_ID_PROOF
+  CUSTOMER_ADDRESS_PROOF
+  LOAN_SANCTION_LETTER
+  OTHER
+}
+
+enum SignatureStatus {
+  PENDING
+  SIGNED
+  REJECTED
+}
+
+enum DueDiligenceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum FinancingType {
+  SELF_FUNDED
+  HOME_LOAN
+  CONSTRUCTION_LINKED_PLAN
+  OTHER
+}
+
+enum FinancingApprovalStatus {
+  NOT_APPLIED
+  APPLIED
+  APPROVED
+  REJECTED
+}
+
 enum PaymentMode {
   CASH
   CHEQUE
@@ -129,50 +197,64 @@ enum DocumentType {
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model Company {
-  id           String        @id @default(uuid())
-  name         String
-  slug         String        @unique
-  status       CompanyStatus @default(ACTIVE)
-  email        String?
-  phone        String?
-  address      String?
-  timezone     String        @default("Asia/Kolkata")
-  currency     String        @default("INR")
-  logoUrl      String?
-  primaryColor String?
-  users        User[]
-  contacts     Contact[]
-  projects     Project[]
-  brokers      Broker[]
-  inquiries    Inquiry[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id                String             @id @default(uuid())
+  name              String
+  slug              String             @unique
+  status            CompanyStatus      @default(ACTIVE)
+  email             String?
+  phone             String?
+  address           String?
+  timezone          String             @default("Asia/Kolkata")
+  currency          String             @default("INR")
+  logoUrl           String?
+  primaryColor      String?
+  users             User[]
+  contacts          Contact[]
+  projects          Project[]
+  brokers           Broker[]
+  inquiries         Inquiry[]
+  contractDocuments    ContractDocument[]
+  dueDiligences        DueDiligence[]
+  financings           Financing[]
+  transactions         Transaction[]
+  invoices             Invoice[]
+  transactionPayments  TransactionPayment[]
+  titleTransfers       TitleTransfer[]
+  createdAt            DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 model User {
-  id                  String        @id @default(uuid())
-  companyId           String?
-  company             Company?      @relation(fields: [companyId], references: [id], onDelete: Restrict)
-  fullName            String
-  email               String        @unique
-  passwordHash        String
-  role                Role
-  phone               String?
-  isActive            Boolean       @default(true)
-  lastLoginAt         DateTime?
-  assignedInquiries   Inquiry[]        @relation("InquiryAssignedTo")
-  createdInquiries    Inquiry[]        @relation("InquiryCreatedBy")
-  createdFollowUps    FollowUp[]
-  performedActivities ActivityLog[]
-  createdInteractions Interaction[]
-  createdSiteVisits   SiteVisit[]
-  createdQuotations   Quotation[]
-  createdNegotiations Negotiation[]
-  bookedBookings      Booking[]
-  recordedPayments    BookingPayment[]
-  uploadedDocuments   BookingDocument[]
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
+  id                        String             @id @default(uuid())
+  companyId                 String?
+  company                   Company?           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  fullName                  String
+  email                     String             @unique
+  passwordHash              String
+  role                      Role
+  phone                     String?
+  isActive                  Boolean            @default(true)
+  lastLoginAt               DateTime?
+  assignedInquiries         Inquiry[]          @relation("InquiryAssignedTo")
+  createdInquiries          Inquiry[]          @relation("InquiryCreatedBy")
+  createdFollowUps          FollowUp[]
+  performedActivities       ActivityLog[]
+  createdInteractions       Interaction[]
+  createdSiteVisits         SiteVisit[]
+  createdQuotations         Quotation[]
+  createdNegotiations       Negotiation[]
+  bookedBookings            Booking[]
+  recordedPayments          BookingPayment[]
+  uploadedDocuments         BookingDocument[]
+  uploadedContractDocuments ContractDocument[]
+  createdDueDiligences      DueDiligence[]
+  createdFinancings         Financing[]
+  createdTransactions       Transaction[]
+  createdInvoices           Invoice[]
+  createdTransactionPayments TransactionPayment[]
+  createdTitleTransfers     TitleTransfer[]
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
 
   @@index([companyId])
 }
@@ -415,25 +497,32 @@ model Negotiation {
 }
 
 model Booking {
-  id               String          @id @default(uuid())
-  inquiryId        String          @unique
-  inquiry          Inquiry         @relation(fields: [inquiryId], references: [id], onDelete: Restrict)
+  id               String           @id @default(uuid())
+  inquiryId        String           @unique
+  inquiry          Inquiry          @relation(fields: [inquiryId], references: [id], onDelete: Restrict)
   quotationId      String
-  quotation        Quotation       @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  quotation        Quotation        @relation(fields: [quotationId], references: [id], onDelete: Restrict)
   unitId           String
-  unit             Unit            @relation(fields: [unitId], references: [id], onDelete: Restrict)
-  finalAmount      Decimal         @db.Decimal(14, 2)
-  discountAmount   Decimal         @default(0) @db.Decimal(14, 2)
-  bookingAmount    Decimal         @db.Decimal(14, 2)
-  status           BookingStatus   @default(CONFIRMED)
+  unit             Unit             @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  finalAmount      Decimal          @db.Decimal(14, 2)
+  discountAmount   Decimal          @default(0) @db.Decimal(14, 2)
+  bookingAmount    Decimal          @db.Decimal(14, 2)
+  status           BookingStatus    @default(CONFIRMED)
   erpSyncedAt      DateTime?
   erpSalesOrderRef String?
   bookedById       String
-  bookedBy         User            @relation(fields: [bookedById], references: [id])
+  bookedBy         User             @relation(fields: [bookedById], references: [id])
   payments         BookingPayment[]
   documents        BookingDocument[]
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  contractDocuments ContractDocument[]
+  dueDiligence     DueDiligence?
+  financing        Financing?
+  transaction      Transaction?
+  transactionPayments TransactionPayment[]
+  invoices         Invoice[]
+  titleTransfer    TitleTransfer?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   @@index([quotationId])
   @@index([unitId])
@@ -470,4 +559,156 @@ model BookingDocument {
 
   @@index([bookingId])
   @@index([uploadedById])
+}
+
+// ─── Module 5: Contract, Due Diligence & Financing ────────────────────────────
+
+model ContractDocument {
+  id              String               @id @default(uuid())
+  bookingId       String
+  booking         Booking              @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  companyId       String
+  company         Company              @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  type            ContractDocumentType
+  fileName        String
+  fileUrl         String               // relative path under /uploads/contracts/ — served via express.static
+  signatureStatus SignatureStatus      @default(PENDING)
+  signedAt        DateTime?
+  uploadedById    String
+  uploadedBy      User                 @relation(fields: [uploadedById], references: [id])
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([bookingId])
+  @@index([companyId])
+  @@index([uploadedById])
+}
+
+model DueDiligence {
+  id                      String             @id @default(uuid())
+  bookingId               String             @unique // one record per booking
+  booking                 Booking            @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  companyId               String
+  company                 Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  inspectionStatus        DueDiligenceStatus @default(PENDING)
+  inspectionNotes         String?
+  appraisalStatus         DueDiligenceStatus @default(PENDING)
+  appraisalNotes          String?
+  legalVerificationStatus DueDiligenceStatus @default(PENDING)
+  legalVerificationNotes  String?
+  createdById             String
+  createdBy               User               @relation(fields: [createdById], references: [id])
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  @@index([companyId])
+  @@index([createdById])
+}
+
+model Financing {
+  id             String                  @id @default(uuid())
+  bookingId      String                  @unique // one record per booking
+  booking        Booking                 @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  companyId      String
+  company        Company                 @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  type           FinancingType
+  approvalStatus FinancingApprovalStatus @default(NOT_APPLIED)
+  bankName       String?
+  loanAmount     Decimal?                @db.Decimal(14, 2)
+  notes          String?
+  erpSyncedAt    DateTime?
+  createdById    String
+  createdBy      User                    @relation(fields: [createdById], references: [id])
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([companyId])
+  @@index([createdById])
+}
+
+// ─── Module 6: Transaction Execution & Closing ────────────────────────────────
+
+model Transaction {
+  id          String            @id @default(uuid())
+  bookingId   String            @unique // one transaction record per booking
+  booking     Booking           @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  companyId   String
+  company     Company           @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  status      TransactionStatus @default(PENDING)
+  erpSyncedAt DateTime?
+  createdById String
+  createdBy   User              @relation(fields: [createdById], references: [id])
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([companyId])
+  @@index([createdById])
+  @@index([status])
+}
+
+model Invoice {
+  id            String               @id @default(uuid())
+  bookingId     String
+  booking       Booking              @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  companyId     String
+  company       Company              @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  invoiceNumber String               @unique // generated on create, e.g. INV-2025-00001
+  amount        Decimal              @db.Decimal(14, 2)
+  status        InvoiceStatus        @default(DRAFT)
+  issuedAt      DateTime?
+  dueDate       DateTime?
+  notes         String?
+  payments      TransactionPayment[]
+  createdById   String
+  createdBy     User                 @relation(fields: [createdById], references: [id])
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([bookingId])
+  @@index([companyId])
+  @@index([createdById])
+  @@index([status])
+}
+
+model TransactionPayment {
+  id              String                   @id @default(uuid())
+  bookingId       String
+  booking         Booking                  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  invoiceId       String? // null until reconciled; set by the reconcile endpoint
+  invoice         Invoice?                 @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  companyId       String
+  company         Company                  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  amount          Decimal                  @db.Decimal(14, 2)
+  mode            PaymentMode // references existing enum from Module 4
+  paidAt          DateTime
+  referenceNumber String?
+  status          TransactionPaymentStatus @default(PENDING)
+  createdById     String
+  createdBy       User                     @relation(fields: [createdById], references: [id])
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  @@index([bookingId])
+  @@index([invoiceId])
+  @@index([companyId])
+  @@index([createdById])
+  @@index([status])
+}
+
+model TitleTransfer {
+  id          String              @id @default(uuid())
+  bookingId   String              @unique // one record per booking
+  booking     Booking             @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  companyId   String
+  company     Company             @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  status      TitleTransferStatus @default(NOT_STARTED)
+  completedAt DateTime?
+  notes       String?
+  createdById String
+  createdBy   User                @relation(fields: [createdById], references: [id])
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([companyId])
+  @@index([createdById])
 }

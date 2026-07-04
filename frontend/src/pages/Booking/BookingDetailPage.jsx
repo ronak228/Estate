@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Download, Plus, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Download, Plus, RefreshCw, CheckCircle, AlertCircle, FileSignature, Receipt } from 'lucide-react';
 import bookingService from '../../services/bookingService';
 import bookingDocumentService from '../../services/bookingDocumentService';
 import negotiationService from '../../services/negotiationService';
@@ -189,6 +189,22 @@ const BookingDetailPage = () => {
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => navigate('/bookings')}>
               Back
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={FileSignature}
+              onClick={() => navigate(`/bookings/${id}/contract`)}
+            >
+              Contract
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Receipt}
+              onClick={() => navigate(`/bookings/${id}/transaction`)}
+            >
+              Transaction
             </Button>
             <Button
               variant="outline"

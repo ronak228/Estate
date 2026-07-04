@@ -58,4 +58,11 @@ const bookingDocumentUploader = createUploader(
   10
 );
 
-module.exports = { companyLogoUploader, documentUploader, bookingDocumentUploader };
+// Contract document uploader — stored under /uploads/contracts/ (Module 5)
+const contractDocumentUploader = createUploader(
+  'contracts',
+  ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
+  10
+);
+
+module.exports = { companyLogoUploader, documentUploader, bookingDocumentUploader, contractDocumentUploader };
