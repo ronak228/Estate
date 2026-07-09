@@ -6,6 +6,11 @@ const unitService = {
     return res.data.data.unit;
   },
 
+  bulkCreateUnits: async (data) => {
+    const res = await api.post('/units/bulk', data);
+    return res.data.data;
+  },
+
   listUnits: async (params = {}) => {
     const res = await api.get('/units', { params });
     return res.data.data.items;

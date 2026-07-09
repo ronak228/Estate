@@ -82,13 +82,15 @@ const SiteVisitPage = () => {
       render: (val) => <StatusBadge value={val} />,
     },
     {
-      key: 'unit',
-      label: 'Unit',
-      render: (unit) =>
-        unit ? (
+      key: 'units',
+      label: 'Units',
+      render: (units) =>
+        units && units.length > 0 ? (
           <div>
-            <p className="font-medium text-gray-900">Unit {unit.unitNumber}</p>
-            <p className="text-xs text-gray-500">{unit.project?.name}</p>
+            <p className="font-medium text-gray-900">
+              {units.map((u) => u.unitNumber).join(', ')}
+            </p>
+            <p className="text-xs text-gray-500">{units[0].project?.name}</p>
           </div>
         ) : (
           '—'

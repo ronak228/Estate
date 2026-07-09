@@ -9,6 +9,10 @@ import UnitAvailabilityList from '../../components/shared/UnitAvailabilityList';
 /**
  * SiteVisitForm — create or reschedule a site visit.
  * When siteVisit prop is provided, operates in edit/reschedule mode.
+ *
+ * A customer may be interested in several units of the same property before
+ * deciding — the unit picker is multi-select and every selected unit is
+ * stored against the visit as its "interested units".
  */
 const SiteVisitForm = ({ siteVisit, onSuccess, onCancel }) => {
   const isEdit = !!siteVisit;
@@ -19,7 +23,7 @@ const SiteVisitForm = ({ siteVisit, onSuccess, onCancel }) => {
     notes: '',
     status: '',
   });
-  const [selectedUnit, setSelectedUnit] = useState(null);
+  const [selectedUnits, setSelectedUnits] = useState([]);
   const [selectedInquiryProjectId, setSelectedInquiryProjectId] = useState('');
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
@@ -45,13 +49,10 @@ const SiteVisitForm = ({ siteVisit, onSuccess, onCancel }) => {
         notes: siteVisit.notes || '',
         status: siteVisit.status || '',
       });
-      if (siteVisit.unit) {
-        setSelectedUnit(siteVisit.unit);
-      }
-      if (siteVisit.inquiry?.contact) {
-        // Try to derive project from the existing unit or inquiry
-        setSelectedInquiryProjectId(siteVisit.unit?.project?.id || '');
-      }
+      setSelectedUnits(siteVisit.units || []);
+      // Project context comes straight from the inquiry now, so the picker
+      // still shows available units even if no unit was selected yet.
+      setSelectedInquiryProjectId(siteVisit.inquiry?.projectId || '');
     }
   }, [siteVisit]);
 
@@ -65,8 +66,18 @@ const SiteVisitForm = ({ siteVisit, onSuccess, onCancel }) => {
     if (name === 'inquiryId') {
       const inq = inquiries.find((i) => i.id === value);
       setSelectedInquiryProjectId(inq?.projectId || '');
-      setSelectedUnit(null);
+      setSelectedUnits([]);
     }
+  };
+
+  const toggleUnit = (unit) => {
+    setSelectedUnits((prev) =>
+      prev.some((u) => u.id === unit.id) ? prev.filter((u) => u.id !== unit.id) : [...prev, unit]
+    );
+  };
+
+  const removeUnit = (unitId) => {
+    setSelectedUnits((prev) => prev.filter((u) => u.id !== unitId));
   };
 
   const validate = () => {
@@ -84,11 +95,12 @@ const SiteVisitForm = ({ siteVisit, onSuccess, onCancel }) => {
     setSubmitting(true);
     setApiError('');
     try {
+      const unitIds = selectedUnits.map((u) => u.id);
       if (isEdit) {
         const updateData = {
           scheduledAt: form.scheduledAt,
           notes: form.notes || undefined,
-          unitId: selectedUnit?.id || undefined,
+          unitIds,
         };
         if (form.status) updateData.status = form.status;
         await siteVisitService.updateSiteVisit(siteVisit.id, updateData);
@@ -97,7 +109,7 @@ const SiteVisitForm = ({ siteVisit, onSuccess, onCancel }) => {
           inquiryId: form.inquiryId,
           scheduledAt: form.scheduledAt,
           notes: form.notes || undefined,
-          unitId: selectedUnit?.id || undefined,
+          unitIds,
         });
       }
       onSuccess();
@@ -172,31 +184,40 @@ const SiteVisitForm = ({ siteVisit, onSuccess, onCancel }) => {
         />
       </div>
 
-      {/* Unit picker — shown if there's a project context */}
+      {/* Unit picker — shown if there's a project context. Multi-select: a
+          customer may be interested in more than one unit before deciding. */}
       <div className="border-t border-gray-100 pt-4">
         <p className="text-sm font-medium text-gray-700 mb-2">
-          Select Unit (optional)
+          Interested Units (optional, select any number)
         </p>
         {selectedInquiryProjectId ? (
           <>
-            {selectedUnit && (
-              <div className="mb-2 flex items-center justify-between p-2 bg-primary/5 border border-primary/20 rounded-lg text-sm">
-                <span className="font-medium text-primary">
-                  Selected: Unit {selectedUnit.unitNumber}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedUnit(null)}
-                  className="text-xs text-gray-500 hover:text-gray-700 underline"
-                >
-                  Clear
-                </button>
+            {selectedUnits.length > 0 && (
+              <div className="mb-2 flex flex-wrap gap-2">
+                {selectedUnits.map((unit) => (
+                  <span
+                    key={unit.id}
+                    className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-primary/5 border border-primary/20 rounded-full text-xs font-medium text-primary"
+                  >
+                    Unit {unit.unitNumber}
+                    <button
+                      type="button"
+                      onClick={() => removeUnit(unit.id)}
+                      className="text-primary/60 hover:text-primary"
+                      aria-label={`Remove unit ${unit.unitNumber}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
               </div>
             )}
             <UnitAvailabilityList
               projectId={selectedInquiryProjectId}
-              selectedUnitId={selectedUnit?.id}
-              onSelect={(unit) => setSelectedUnit(unit)}
+              multiple
+              selectedUnitIds={selectedUnits.map((u) => u.id)}
+              onToggle={toggleUnit}
+              showPrice={false}
             />
           </>
         ) : (

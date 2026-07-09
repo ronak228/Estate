@@ -18,12 +18,13 @@ const sendSuccess = (res, message, data = null, statusCode = 200) => {
  * @param {object} res - Express response object
  * @param {string} message - Human-readable error message
  * @param {number} statusCode - HTTP status (default 400)
+ * @param {any} data - Optional structured error detail (e.g. per-row validation errors)
  */
-const sendError = (res, message, statusCode = 400) => {
+const sendError = (res, message, statusCode = 400, data = null) => {
   return res.status(statusCode).json({
     success: false,
     message,
-    data: null,
+    data,
   });
 };
 

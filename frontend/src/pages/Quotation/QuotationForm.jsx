@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import quotationService from '../../services/quotationService';
 import inquiryService from '../../services/inquiryService';
+import siteVisitService from '../../services/siteVisitService';
+import unitService from '../../services/unitService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
 import Select from '../../components/shared/Select';
@@ -30,6 +32,36 @@ const QuotationForm = ({ defaultInquiryId, onSuccess, onCancel }) => {
 
   const [inquiries, setInquiries] = useState([]);
   const [selectedInquiryProjectId, setSelectedInquiryProjectId] = useState('');
+  const [projectUnits, setProjectUnits] = useState([]);
+  const [interestedUnitIds, setInterestedUnitIds] = useState(new Set());
+
+  // Full available-unit records for the project (with pricing) — the single
+  // source of truth for both "units of interest" and "all available" below.
+  useEffect(() => {
+    if (!selectedInquiryProjectId) { setProjectUnits([]); return; }
+    unitService
+      .listUnits({ projectId: selectedInquiryProjectId, status: 'AVAILABLE' })
+      .then(setProjectUnits)
+      .catch(() => setProjectUnits([]));
+  }, [selectedInquiryProjectId]);
+
+  // Surface units the customer already toured (site visits) so the final
+  // unit for this quotation can be picked from what they showed interest in.
+  useEffect(() => {
+    if (!form.inquiryId) { setInterestedUnitIds(new Set()); return; }
+    siteVisitService
+      .listSiteVisits({ inquiryId: form.inquiryId, pageSize: 100 })
+      .then((data) => {
+        const ids = new Set();
+        (data.items || []).forEach((visit) => {
+          (visit.units || []).forEach((unit) => ids.add(unit.id));
+        });
+        setInterestedUnitIds(ids);
+      })
+      .catch(() => setInterestedUnitIds(new Set()));
+  }, [form.inquiryId]);
+
+  const interestedUnits = projectUnits.filter((u) => interestedUnitIds.has(u.id));
 
   useEffect(() => {
     inquiryService
@@ -164,14 +196,38 @@ const QuotationForm = ({ defaultInquiryId, onSuccess, onCancel }) => {
                 </button>
               </div>
             )}
-            <UnitAvailabilityList
-              projectId={selectedInquiryProjectId}
-              selectedUnitId={selectedUnit?.id}
-              onSelect={(unit) => {
-                setSelectedUnit(unit);
-                setErrors((prev) => ({ ...prev, unit: '' }));
-              }}
-            />
+
+            {interestedUnits.length > 0 && (
+              <div className="flex flex-col gap-2 mb-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Units of Interest (from Site Visits)
+                </p>
+                <UnitAvailabilityList
+                  units={interestedUnits}
+                  selectedUnitId={selectedUnit?.id}
+                  onSelect={(unit) => {
+                    setSelectedUnit(unit);
+                    setErrors((prev) => ({ ...prev, unit: '' }));
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              {interestedUnits.length > 0 && (
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  All Available Units
+                </p>
+              )}
+              <UnitAvailabilityList
+                units={projectUnits}
+                selectedUnitId={selectedUnit?.id}
+                onSelect={(unit) => {
+                  setSelectedUnit(unit);
+                  setErrors((prev) => ({ ...prev, unit: '' }));
+                }}
+              />
+            </div>
           </>
         ) : (
           <p className="text-xs text-gray-400 py-2">

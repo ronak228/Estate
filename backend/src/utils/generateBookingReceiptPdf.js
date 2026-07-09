@@ -1,4 +1,5 @@
 const PDFDocument = require('pdfkit');
+const resolveUploadPath = require('./resolveUploadPath');
 
 /**
  * generateBookingReceiptPdf — builds a booking receipt PDF using pdfkit.
@@ -11,7 +12,7 @@ const PDFDocument = require('pdfkit');
  * @param {object} params.inquiry   - { id }
  * @param {object} params.quotation - { id, totalAmount, basePrice }
  * @param {object[]} params.payments - Array of { amount, mode, paidAt, referenceNumber }
- * @param {object} params.company   - { name, email, phone, address }
+ * @param {object} params.company   - { name, email, phone, address, logoUrl }
  * @param {object} params.bookedBy  - { fullName }
  * @returns {Promise<Buffer>}
  */
@@ -56,13 +57,27 @@ const generateBookingReceiptPdf = ({
     // ── Header bar ────────────────────────────────────────────────────────────
     doc.rect(0, 0, doc.page.width, 70).fill(PRIMARY);
 
+    // Logo is optional — pdfkit only embeds JPEG/PNG, so a WEBP/SVG upload (or
+    // any other decode failure) just falls back to the text-only header rather
+    // than breaking receipt generation for the whole company.
+    let headerTextX = 50;
+    const logoPath = resolveUploadPath(company?.logoUrl);
+    if (logoPath) {
+      try {
+        doc.image(logoPath, 50, 15, { fit: [40, 40] });
+        headerTextX = 100;
+      } catch {
+        // Unsupported image format — keep the default text-only header.
+      }
+    }
+
     doc
       .fillColor('#FFFFFF')
       .fontSize(20)
       .font('Helvetica-Bold')
-      .text(company?.name || 'Real Estate CRM', 50, 22);
+      .text(company?.name || 'Real Estate CRM', headerTextX, 22);
 
-    doc.fontSize(9).font('Helvetica').text('BOOKING CONFIRMATION RECEIPT', 50, 48);
+    doc.fontSize(9).font('Helvetica').text('BOOKING CONFIRMATION RECEIPT', headerTextX, 48);
 
     doc.fontSize(9).text(`Receipt #${booking.id.slice(0, 8).toUpperCase()}`, 350, 35, {
       align: 'right',

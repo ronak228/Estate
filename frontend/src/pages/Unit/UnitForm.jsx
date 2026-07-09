@@ -4,6 +4,7 @@ import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
 import { formatCurrency } from '../../utils/format';
 import { isPositiveInteger } from '../../utils/validation';
+import { calcAreaAndBasePrice } from '../../utils/unitCalc';
 
 /**
  * UnitForm — create or edit a unit within a project.
@@ -17,6 +18,8 @@ const UnitForm = ({ unit, projectId, onSuccess, onCancel }) => {
 
   const [form, setForm] = useState({
     unitNumber: '',
+    floor: '',
+    unitType: '',
     width: '',
     length: '',
     pricePerSqFt: '',
@@ -26,18 +29,19 @@ const UnitForm = ({ unit, projectId, onSuccess, onCancel }) => {
   const [submitting, setSubmitting] = useState(false);
 
   // Derived display values — live calculation, never sent to server
-  const widthNum = parseFloat(form.width) || 0;
-  const lengthNum = parseFloat(form.length) || 0;
-  const pricePerSqFtNum = parseInt(form.pricePerSqFt, 10) || 0;
-  const derivedArea = widthNum * lengthNum;
-  // basePrice is a whole-rupee Int on the server — round the preview to match.
-  const derivedBasePrice = Math.round(derivedArea * pricePerSqFtNum);
+  const { area: derivedArea, basePrice: derivedBasePrice } = calcAreaAndBasePrice(
+    form.width,
+    form.length,
+    form.pricePerSqFt
+  );
   const hasCalc = derivedArea > 0 && derivedBasePrice > 0;
 
   useEffect(() => {
     if (unit) {
       setForm({
         unitNumber: unit.unitNumber || '',
+        floor: unit.floor != null ? String(unit.floor) : '',
+        unitType: unit.unitType || '',
         width: unit.width != null ? String(unit.width) : '',
         length: unit.length != null ? String(unit.length) : '',
         pricePerSqFt: unit.pricePerSqFt != null ? String(unit.pricePerSqFt) : '',
@@ -60,6 +64,9 @@ const UnitForm = ({ unit, projectId, onSuccess, onCancel }) => {
     if (!isPositiveInteger(form.pricePerSqFt)) {
       errs.pricePerSqFt = 'Price per sq. ft. must be a positive whole number';
     }
+    if (form.floor !== '' && !Number.isInteger(Number(form.floor))) {
+      errs.floor = 'Floor must be a whole number';
+    }
     return errs;
   };
 
@@ -74,6 +81,8 @@ const UnitForm = ({ unit, projectId, onSuccess, onCancel }) => {
     try {
       const payload = {
         unitNumber: form.unitNumber.trim(),
+        floor: form.floor !== '' ? parseInt(form.floor, 10) : null,
+        unitType: form.unitType.trim() || null,
         width: parseFloat(form.width),
         length: parseFloat(form.length),
         pricePerSqFt: parseInt(form.pricePerSqFt, 10),
@@ -109,6 +118,27 @@ const UnitForm = ({ unit, projectId, onSuccess, onCancel }) => {
         error={errors.unitNumber}
         placeholder="e.g. A-101"
       />
+
+      {/* Floor & Type (optional) */}
+      <div className="grid grid-cols-2 gap-3">
+        <Input
+          label="Floor (optional)"
+          name="floor"
+          type="number"
+          value={form.floor}
+          onChange={handleChange}
+          error={errors.floor}
+          placeholder="e.g. 1"
+          step="1"
+        />
+        <Input
+          label="Unit Type (optional)"
+          name="unitType"
+          value={form.unitType}
+          onChange={handleChange}
+          placeholder="e.g. 2BHK"
+        />
+      </div>
 
       {/* Dimensions */}
       <div className="grid grid-cols-2 gap-3">

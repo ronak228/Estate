@@ -354,7 +354,7 @@ const getBookingReceipt = async (req, res, next) => {
 
     const company = await db.company.findUnique({
       where: { id: companyId },
-      select: { name: true, email: true, phone: true, address: true },
+      select: { name: true, email: true, phone: true, address: true, logoUrl: true },
     });
 
     const pdfBuffer = await generateBookingReceiptPdf({

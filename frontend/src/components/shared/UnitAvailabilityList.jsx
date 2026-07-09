@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle, Building2 } from 'lucide-react';
+import { Building2, Check } from 'lucide-react';
 import unitService from '../../services/unitService';
 import StatusBadge from './StatusBadge';
 import LoadingState from './LoadingState';
@@ -9,21 +9,37 @@ import { formatCurrency } from '../../utils/format';
 
 /**
  * UnitAvailabilityList — read-only unit picker.
- * Shows available units (filtered by projectId if provided).
- * When selectedUnitId + onSelect are provided, allows picking a unit.
- * Reused in Module 3's quotation flow.
+ * Fetches available units for `projectId` unless a pre-loaded `units` array
+ * is passed in (e.g. a curated "units of interest" list), in which case that
+ * list is rendered as-is with no fetch.
+ *
+ * Single-select (default): pass selectedUnitId + onSelect.
+ * Multi-select: pass multiple + selectedUnitIds + onToggle.
+ *
+ * Reused in the Schedule Site Visit and Quotation flows.
  */
 const UnitAvailabilityList = ({
   projectId,
+  units: providedUnits,
   selectedUnitId,
   onSelect,
+  multiple = false,
+  selectedUnitIds = [],
+  onToggle,
+  showPrice = true,
   readOnly = false,
+  emptyMessage = 'No available units found',
 }) => {
-  const [units, setUnits] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [units, setUnits] = useState(providedUnits || []);
+  const [loading, setLoading] = useState(!providedUnits);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (providedUnits) {
+      setUnits(providedUnits);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError('');
     unitService
@@ -31,60 +47,73 @@ const UnitAvailabilityList = ({
       .then(setUnits)
       .catch(() => setError('Failed to load units'))
       .finally(() => setLoading(false));
-  }, [projectId]);
+  }, [projectId, providedUnits]);
 
   if (loading) return <LoadingState label="Loading available units..." />;
   if (error) return <ErrorState message={error} onRetry={() => setLoading(true)} />;
   if (units.length === 0) {
-    return <EmptyState message="No available units found" icon={Building2} />;
+    return <EmptyState message={emptyMessage} icon={Building2} />;
   }
+
+  const isInteractive = !readOnly && (multiple ? !!onToggle : !!onSelect);
 
   return (
     <ul className="space-y-2">
       {units.map((unit) => {
-        const isSelected = selectedUnitId === unit.id;
+        const isSelected = multiple ? selectedUnitIds.includes(unit.id) : selectedUnitId === unit.id;
+        const handleClick = () => {
+          if (!isInteractive) return;
+          if (multiple) onToggle(unit);
+          else onSelect(unit);
+        };
         return (
           <li
             key={unit.id}
-            onClick={!readOnly && onSelect ? () => onSelect(unit) : undefined}
+            onClick={isInteractive ? handleClick : undefined}
             className={`
               flex items-center justify-between p-3 rounded-lg border transition-colors
-              ${!readOnly && onSelect ? 'cursor-pointer' : ''}
+              ${isInteractive ? 'cursor-pointer' : ''}
               ${
                 isSelected
                   ? 'border-primary bg-primary/5'
-                  : !readOnly && onSelect
+                  : isInteractive
                   ? 'border-gray-200 hover:border-primary hover:bg-gray-50'
                   : 'border-gray-200 bg-white'
               }
             `}
           >
             <div className="flex items-center gap-3">
-              {!readOnly && onSelect && (
+              {isInteractive && (
                 <div
-                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                    isSelected ? 'border-primary' : 'border-gray-300'
-                  }`}
+                  className={`w-4 h-4 flex-shrink-0 flex items-center justify-center border-2 ${
+                    multiple ? 'rounded' : 'rounded-full'
+                  } ${isSelected ? 'border-primary bg-primary' : 'border-gray-300'}`}
                 >
-                  {isSelected && (
-                    <div className="w-2 h-2 rounded-full bg-primary" />
+                  {isSelected && (multiple
+                    ? <Check size={11} className="text-white" strokeWidth={3} />
+                    : <div className="w-2 h-2 rounded-full bg-white" />
                   )}
                 </div>
               )}
               <div>
                 <p className="text-sm font-medium text-gray-900">
                   Unit {unit.unitNumber}
+                  {unit.unitType ? <span className="text-gray-500 font-normal"> · {unit.unitType}</span> : ''}
                 </p>
                 <p className="text-xs text-gray-500">
                   {unit.project?.name}
                   {unit.project?.location ? ` — ${unit.project.location}` : ''}
+                  {unit.floor != null ? ` · Floor ${unit.floor}` : ''}
+                  {unit.area != null ? ` · ${Number(unit.area).toLocaleString('en-IN')} sq. ft.` : ''}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold text-gray-800">
-                {formatCurrency(unit.basePrice)}
-              </span>
+              {showPrice && (
+                <span className="text-sm font-semibold text-gray-800">
+                  {formatCurrency(unit.basePrice)}
+                </span>
+              )}
               <StatusBadge value={unit.status} />
             </div>
           </li>

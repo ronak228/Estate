@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Download, Plus, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
 import bookingService from '../../services/bookingService';
 import bookingDocumentService from '../../services/bookingDocumentService';
-import negotiationService from '../../services/negotiationService';
 import { useAuth } from '../../context/AuthContext';
 
 import PageLayout from '../../components/shared/PageLayout';
@@ -13,7 +12,6 @@ import StatusBadge from '../../components/shared/StatusBadge';
 import LoadingState from '../../components/shared/LoadingState';
 import ErrorState from '../../components/shared/ErrorState';
 import Modal from '../../components/shared/Modal';
-import NegotiationHistory from '../../components/shared/NegotiationHistory';
 import PaymentList from '../../components/shared/PaymentList';
 import PaymentForm from '../../components/shared/PaymentForm';
 import DocumentUploader from '../../components/shared/DocumentUploader';
@@ -32,9 +30,6 @@ const BookingDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [downloadError, setDownloadError] = useState('');
-
-  // Negotiation history (fetched by inquiryId)
-  const [negotiations, setNegotiations] = useState([]);
 
   // Payments
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -64,16 +59,6 @@ const BookingDetailPage = () => {
     try {
       const data = await bookingService.getBooking(id);
       setBooking(data);
-
-      // Fetch negotiation history for this inquiry
-      if (data.inquiry?.id) {
-        try {
-          const negs = await negotiationService.listNegotiations(data.inquiry.id);
-          setNegotiations(negs);
-        } catch {
-          // Non-blocking — negotiation history is supplementary
-        }
-      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load booking');
     } finally {
@@ -252,12 +237,6 @@ const BookingDetailPage = () => {
               uploadError={uploadError}
               canDelete={isManager}
             />
-          </div>
-
-          {/* Negotiation history */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Negotiation History</h2>
-            <NegotiationHistory negotiations={negotiations} />
           </div>
         </div>
 

@@ -12,7 +12,7 @@ import Modal from '../../components/shared/Modal';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
 import SiteVisitForm from './SiteVisitForm';
 import QuotationForm from '../Quotation/QuotationForm';
-import { formatDateTime, formatCurrency } from '../../utils/format';
+import { formatDateTime } from '../../utils/format';
 
 const SiteVisitDetailPage = () => {
   const { id } = useParams();
@@ -92,7 +92,7 @@ const SiteVisitDetailPage = () => {
                 Mark Complete
               </Button>
             )}
-            {isCompleted && siteVisit.unit && (
+            {isCompleted && siteVisit.units?.length > 0 && (
               <Button size="sm" icon={Plus} onClick={() => setQuoteOpen(true)}>
                 Create Quotation
               </Button>
@@ -163,38 +163,33 @@ const SiteVisitDetailPage = () => {
           </dl>
         </div>
 
-        {/* Unit Details */}
+        {/* Interested Units — a customer may be interested in several units
+            of the same property before deciding on one. */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Unit Details</h2>
-          {siteVisit.unit ? (
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-              <div>
-                <dt className="text-gray-500">Unit Number</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">
-                  Unit {siteVisit.unit.unitNumber}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">Project</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">
-                  {siteVisit.unit.project?.name || '—'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">Price</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">
-                  {formatCurrency(siteVisit.unit.basePrice)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">Unit Status</dt>
-                <dd className="mt-0.5">
-                  <StatusBadge value={siteVisit.unit.status} />
-                </dd>
-              </div>
-            </dl>
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">
+            Interested Units {siteVisit.units?.length > 0 && `(${siteVisit.units.length})`}
+          </h2>
+          {siteVisit.units?.length > 0 ? (
+            <ul className="flex flex-col divide-y divide-gray-100">
+              {siteVisit.units.map((unit) => (
+                <li key={unit.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-gray-900 text-sm">
+                      Unit {unit.unitNumber}
+                      {unit.unitType ? <span className="text-gray-500 font-normal"> · {unit.unitType}</span> : ''}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {unit.project?.name || '—'}
+                      {unit.floor != null ? ` · Floor ${unit.floor}` : ''}
+                      {unit.area != null ? ` · ${Number(unit.area).toLocaleString('en-IN')} sq. ft.` : ''}
+                    </p>
+                  </div>
+                  <StatusBadge value={unit.status} />
+                </li>
+              ))}
+            </ul>
           ) : (
-            <p className="text-sm text-gray-400">No unit linked to this visit.</p>
+            <p className="text-sm text-gray-400">No units linked to this visit.</p>
           )}
         </div>
       </div>

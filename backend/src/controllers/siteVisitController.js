@@ -5,36 +5,79 @@ const { MANUAL_SITE_VISIT_STATUSES } = require('../utils/constants');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// unit pricing is intentionally omitted here — visit scheduling doesn't need
+// it, and floor/unitType/area/status are what an admin needs to tell units apart.
 const SITE_VISIT_INCLUDE = {
   inquiry: {
     select: {
       id: true,
       stage: true,
+      projectId: true,
       contact: { select: { id: true, fullName: true, phone: true } },
     },
   },
-  unit: {
+  units: {
     select: {
-      id: true,
-      unitNumber: true,
-      basePrice: true,
-      area: true,
-      status: true,
-      project: { select: { id: true, name: true } },
+      unit: {
+        select: {
+          id: true,
+          unitNumber: true,
+          floor: true,
+          unitType: true,
+          area: true,
+          status: true,
+          project: { select: { id: true, name: true } },
+        },
+      },
     },
   },
   createdBy: { select: { id: true, fullName: true } },
 };
 
+// Flattens the SiteVisitUnit join rows into a plain `units: Unit[]` array so
+// callers don't have to know about the join table shape.
+function formatSiteVisit(siteVisit) {
+  if (!siteVisit) return siteVisit;
+  return { ...siteVisit, units: siteVisit.units.map((su) => su.unit) };
+}
+
+/**
+ * Validates and dedupes a candidate unitIds array for a site visit. Shared by
+ * create and update so both enforce the same "AVAILABLE units only" rule
+ * (BUG-004) across every unit in the batch, not just a single one.
+ * Returns { ids } on success or { error } on failure.
+ */
+async function resolveUnitIds(unitIds, companyId) {
+  if (!Array.isArray(unitIds) || unitIds.length === 0) return { ids: [] };
+
+  const uniqueIds = Array.from(new Set(unitIds));
+  const units = await db.unit.findMany({
+    where: { id: { in: uniqueIds }, project: { companyId } },
+  });
+  if (units.length !== uniqueIds.length) {
+    return { error: 'One or more units were not found in your company' };
+  }
+
+  const notAvailable = units.filter((u) => u.status !== 'AVAILABLE');
+  if (notAvailable.length) {
+    return { error: `Unit(s) not available: ${notAvailable.map((u) => u.unitNumber).join(', ')}` };
+  }
+
+  return { ids: uniqueIds };
+}
+
 // ─── POST /api/site-visits ────────────────────────────────────────────────────
 
 const createSiteVisit = async (req, res, next) => {
   try {
-    const { inquiryId, unitId, scheduledAt, notes } = req.body;
+    const { inquiryId, unitIds, scheduledAt, notes } = req.body;
     const companyId = req.user.companyId;
 
     if (!inquiryId) return sendError(res, 'inquiryId is required', 400);
     if (!scheduledAt) return sendError(res, 'scheduledAt is required', 400);
+    if (unitIds !== undefined && !Array.isArray(unitIds)) {
+      return sendError(res, 'unitIds must be an array of unit ids', 400);
+    }
 
     const scheduledDate = new Date(scheduledAt);
     if (isNaN(scheduledDate.getTime())) {
@@ -47,28 +90,20 @@ const createSiteVisit = async (req, res, next) => {
     });
     if (!inquiry) return sendError(res, 'Inquiry not found', 404);
 
-    // Verify unit belongs to a project in this company (if provided)
-    if (unitId) {
-      const unit = await db.unit.findFirst({
-        where: { id: unitId, project: { companyId } },
-      });
-      if (!unit) return sendError(res, 'Unit not found', 400);
-
-      // Business Rule 4 (BUG-004): only AVAILABLE units may be selected.
-      if (unit.status !== 'AVAILABLE') {
-        return sendError(res, `Unit is not available (current status: ${unit.status})`, 400);
-      }
-    }
+    // A customer may be interested in several units of the same property
+    // before deciding — validate every candidate, not just one.
+    const { ids: resolvedUnitIds, error: unitError } = await resolveUnitIds(unitIds, companyId);
+    if (unitError) return sendError(res, unitError, 400);
 
     const siteVisit = await db.$transaction(async (tx) => {
       const created = await tx.siteVisit.create({
         data: {
           inquiryId,
-          unitId: unitId || null,
           scheduledAt: scheduledDate,
           notes: notes?.trim() || null,
           createdById: req.user.id,
           status: 'SCHEDULED',
+          units: { create: resolvedUnitIds.map((unitId) => ({ unitId })) },
         },
         include: SITE_VISIT_INCLUDE,
       });
@@ -87,7 +122,7 @@ const createSiteVisit = async (req, res, next) => {
       return created;
     });
 
-    return sendSuccess(res, 'Site visit scheduled', { siteVisit }, 201);
+    return sendSuccess(res, 'Site visit scheduled', { siteVisit: formatSiteVisit(siteVisit) }, 201);
   } catch (err) {
     next(err);
   }
@@ -126,7 +161,7 @@ const listSiteVisits = async (req, res, next) => {
     ]);
 
     return sendSuccess(res, 'Site visits retrieved', {
-      items,
+      items: items.map(formatSiteVisit),
       total,
       page,
       pageSize,
@@ -152,7 +187,7 @@ const getSiteVisit = async (req, res, next) => {
 
     if (!siteVisit) return sendError(res, 'Site visit not found', 404);
 
-    return sendSuccess(res, 'Site visit retrieved', { siteVisit });
+    return sendSuccess(res, 'Site visit retrieved', { siteVisit: formatSiteVisit(siteVisit) });
   } catch (err) {
     next(err);
   }
@@ -162,7 +197,7 @@ const getSiteVisit = async (req, res, next) => {
 
 const updateSiteVisit = async (req, res, next) => {
   try {
-    const { scheduledAt, unitId, notes, status } = req.body;
+    const { scheduledAt, unitIds, notes, status } = req.body;
     const companyId = req.user.companyId;
 
     const existing = await db.siteVisit.findFirst({
@@ -183,16 +218,15 @@ const updateSiteVisit = async (req, res, next) => {
       );
     }
 
-    if (unitId) {
-      const unit = await db.unit.findFirst({
-        where: { id: unitId, project: { companyId } },
-      });
-      if (!unit) return sendError(res, 'Unit not found', 400);
+    if (unitIds !== undefined && !Array.isArray(unitIds)) {
+      return sendError(res, 'unitIds must be an array of unit ids', 400);
+    }
 
-      // Business Rule 4 (BUG-004): only AVAILABLE units may be selected.
-      if (unit.status !== 'AVAILABLE') {
-        return sendError(res, `Unit is not available (current status: ${unit.status})`, 400);
-      }
+    let resolvedUnitIds;
+    if (unitIds !== undefined) {
+      const { ids, error: unitError } = await resolveUnitIds(unitIds, companyId);
+      if (unitError) return sendError(res, unitError, 400);
+      resolvedUnitIds = ids;
     }
 
     const updateData = {};
@@ -209,17 +243,29 @@ const updateSiteVisit = async (req, res, next) => {
       }
     }
 
-    if (unitId !== undefined) updateData.unitId = unitId || null;
     if (notes !== undefined) updateData.notes = notes?.trim() || null;
     if (status) updateData.status = status;
 
-    const siteVisit = await db.siteVisit.update({
-      where: { id: req.params.id },
-      data: updateData,
-      include: SITE_VISIT_INCLUDE,
+    const siteVisit = await db.$transaction(async (tx) => {
+      // Replace the interested-units set wholesale when unitIds is provided —
+      // simpler and safer than diffing add/remove, and batches are small.
+      if (resolvedUnitIds !== undefined) {
+        await tx.siteVisitUnit.deleteMany({ where: { siteVisitId: req.params.id } });
+        if (resolvedUnitIds.length) {
+          await tx.siteVisitUnit.createMany({
+            data: resolvedUnitIds.map((unitId) => ({ siteVisitId: req.params.id, unitId })),
+          });
+        }
+      }
+
+      return tx.siteVisit.update({
+        where: { id: req.params.id },
+        data: updateData,
+        include: SITE_VISIT_INCLUDE,
+      });
     });
 
-    return sendSuccess(res, 'Site visit updated', { siteVisit });
+    return sendSuccess(res, 'Site visit updated', { siteVisit: formatSiteVisit(siteVisit) });
   } catch (err) {
     next(err);
   }
@@ -274,7 +320,7 @@ const completeSiteVisit = async (req, res, next) => {
       }),
     ]);
 
-    return sendSuccess(res, 'Site visit completed', { siteVisit });
+    return sendSuccess(res, 'Site visit completed', { siteVisit: formatSiteVisit(siteVisit) });
   } catch (err) {
     next(err);
   }

@@ -317,8 +317,7 @@ model SiteVisit {
   id          String          @id @default(uuid())
   inquiryId   String
   inquiry     Inquiry         @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
-  unitId      String?
-  unit        Unit?           @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  units       SiteVisitUnit[]
   scheduledAt DateTime
   status      SiteVisitStatus @default(SCHEDULED)
   notes       String?
@@ -328,29 +327,43 @@ model SiteVisit {
   updatedAt   DateTime        @updatedAt
 
   @@index([inquiryId])
-  @@index([unitId])
   @@index([createdById])
   @@index([status])
   @@index([scheduledAt])
 }
 
+// Join model — a customer may be interested in several units of the same
+// property before committing, so a site visit can carry many candidate units.
+model SiteVisitUnit {
+  siteVisitId String
+  siteVisit   SiteVisit @relation(fields: [siteVisitId], references: [id], onDelete: Cascade)
+  unitId      String
+  unit        Unit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@id([siteVisitId, unitId])
+  @@index([unitId])
+}
+
 // Unit — real implementation (replaces stub from Module 2 plan).
 model Unit {
-  id           String      @id @default(uuid())
-  projectId    String
-  project      Project     @relation(fields: [projectId], references: [id])
-  unitNumber   String
-  width        Decimal     @db.Decimal(10, 4) // feet — 4dp for dimension precision
-  length       Decimal     @db.Decimal(10, 4) // feet
-  area         Decimal     @db.Decimal(14, 4) // sq. ft. — calculated: width × length
-  pricePerSqFt Int         // ₹ per sq. ft. — whole rupees only
-  basePrice    Int         // calculated: area × pricePerSqFt, rounded to whole rupees
-  status       UnitStatus  @default(AVAILABLE)
-  siteVisits   SiteVisit[]
-  quotations   Quotation[]
-  bookings     Booking[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id             String          @id @default(uuid())
+  projectId      String
+  project        Project         @relation(fields: [projectId], references: [id])
+  unitNumber     String
+  floor          Int?            // optional — populated by bulk generation or manual entry
+  unitType       String?         // optional free-text, e.g. "2BHK", "Shop", "Office"
+  width          Decimal         @db.Decimal(10, 4) // feet — 4dp for dimension precision
+  length         Decimal         @db.Decimal(10, 4) // feet
+  area           Decimal         @db.Decimal(14, 4) // sq. ft. — calculated: width × length
+  pricePerSqFt   Int             // ₹ per sq. ft. — whole rupees only
+  basePrice      Int             // calculated: area × pricePerSqFt, rounded to whole rupees
+  status         UnitStatus      @default(AVAILABLE)
+  siteVisitUnits SiteVisitUnit[]
+  quotations     Quotation[]
+  bookings       Booking[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@unique([projectId, unitNumber])
   @@index([status])

@@ -44,6 +44,9 @@ const VALID_DOCUMENT_TYPES = [
 
 const VALID_INTERACTION_TYPES = ['CALL', 'MEETING', 'WHATSAPP', 'EMAIL', 'NOTE'];
 
+// Cap on how many units can be generated in one bulk-create request.
+const MAX_BULK_UNITS = 500;
+
 module.exports = {
   VALID_INQUIRY_SOURCES,
   VALID_INQUIRY_STAGES,
@@ -55,4 +58,5 @@ module.exports = {
   VALID_PAYMENT_MODES,
   VALID_DOCUMENT_TYPES,
   VALID_INTERACTION_TYPES,
+  MAX_BULK_UNITS,
 };

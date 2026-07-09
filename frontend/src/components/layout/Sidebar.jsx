@@ -132,9 +132,17 @@ const Sidebar = () => {
       {/* Logo */}
       <div className="px-4 py-5 border-b border-gray-200">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Building2 size={18} className="text-white" />
-          </div>
+          {user?.companyLogoUrl ? (
+            <img
+              src={user.companyLogoUrl}
+              alt={`${user.companyName || 'Company'} logo`}
+              className="w-8 h-8 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+              <Building2 size={18} className="text-white" />
+            </div>
+          )}
           <span className="font-semibold text-gray-900 text-sm">Real Estate CRM</span>
         </div>
       </div>

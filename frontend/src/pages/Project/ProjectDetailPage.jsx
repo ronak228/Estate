@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Building2, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, Layers, Building2, Pencil } from 'lucide-react';
 import projectService from '../../services/projectService';
 import unitService from '../../services/unitService';
 import { useAuth } from '../../context/AuthContext';
@@ -14,6 +14,7 @@ import ErrorState from '../../components/shared/ErrorState';
 import LoadingState from '../../components/shared/LoadingState';
 import ProjectForm from './ProjectForm';
 import UnitForm from '../Unit/UnitForm';
+import BulkUnitForm from '../Unit/BulkUnitForm';
 import { formatCurrency, formatDate } from '../../utils/format';
 
 const MANAGERS = ['ADMIN', 'MANAGER'];
@@ -31,6 +32,7 @@ const ProjectDetailPage = () => {
 
   const [editOpen, setEditOpen] = useState(false);
   const [addUnitOpen, setAddUnitOpen] = useState(false);
+  const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [editUnit, setEditUnit] = useState(null);
   const [statusUnit, setStatusUnit] = useState(null);
   const [statusValue, setStatusValue] = useState('');
@@ -76,6 +78,16 @@ const ProjectDetailPage = () => {
       key: 'unitNumber',
       label: 'Unit No.',
       render: (val) => <span className="font-medium text-gray-900">{val}</span>,
+    },
+    {
+      key: 'floor',
+      label: 'Floor',
+      render: (val) => val ?? '—',
+    },
+    {
+      key: 'unitType',
+      label: 'Type',
+      render: (val) => val || '—',
     },
     {
       key: 'area',
@@ -189,6 +201,9 @@ const ProjectDetailPage = () => {
                 <Button icon={Plus} size="sm" onClick={() => setAddUnitOpen(true)}>
                   Add Unit
                 </Button>
+                <Button variant="outline" icon={Layers} size="sm" onClick={() => setBulkAddOpen(true)}>
+                  Bulk Add Units
+                </Button>
               </>
             )}
           </div>
@@ -260,6 +275,21 @@ const ProjectDetailPage = () => {
           projectId={project.id}
           onSuccess={() => { setAddUnitOpen(false); fetchProject(); }}
           onCancel={() => setAddUnitOpen(false)}
+        />
+      </Modal>
+
+      {/* Bulk Add Units Modal */}
+      <Modal
+        isOpen={bulkAddOpen}
+        onClose={() => setBulkAddOpen(false)}
+        title="Bulk Add Units"
+        size="xl"
+      >
+        <BulkUnitForm
+          projectId={project.id}
+          existingUnitNumbers={(project.units || []).map((u) => u.unitNumber)}
+          onSuccess={() => { setBulkAddOpen(false); fetchProject(); }}
+          onCancel={() => setBulkAddOpen(false)}
         />
       </Modal>
 

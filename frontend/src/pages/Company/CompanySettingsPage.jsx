@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import companyService from '../../services/companyService';
+import { useAuth } from '../../context/AuthContext';
 import PageLayout from '../../components/shared/PageLayout';
 import PageHeader from '../../components/shared/PageHeader';
 import Input from '../../components/shared/Input';
@@ -9,6 +10,7 @@ import LoadingState from '../../components/shared/LoadingState';
 import ErrorState from '../../components/shared/ErrorState';
 
 const CompanySettingsPage = () => {
+  const { updateUser } = useAuth();
   const [company, setCompany] = useState(null);
   const [form, setForm] = useState({ timezone: '', currency: '', primaryColor: '' });
   const [logoFile, setLogoFile] = useState(null);
@@ -58,6 +60,8 @@ const CompanySettingsPage = () => {
       setCompany(updated);
       setLogoFile(null);
       setSuccess('Settings saved successfully');
+      // Keep the sidebar/topbar branding in sync without requiring a re-login.
+      updateUser({ companyName: updated.name, companyLogoUrl: updated.logoUrl });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save settings');
     } finally {

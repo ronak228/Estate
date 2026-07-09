@@ -1,4 +1,5 @@
 const PDFDocument = require('pdfkit');
+const resolveUploadPath = require('./resolveUploadPath');
 
 /**
  * generateQuotationPdf — builds a PDF quotation document using pdfkit.
@@ -8,7 +9,7 @@ const PDFDocument = require('pdfkit');
  * @param {object[]} params.charges   - Array of { label, amount }
  * @param {object} params.unit        - { unitNumber, price, project: { name, location } }
  * @param {object} params.contact     - { fullName, phone, email }
- * @param {object} params.company     - { name, email, phone, address }
+ * @param {object} params.company     - { name, email, phone, address, logoUrl }
  * @param {object} params.createdBy   - { fullName }
  * @returns {Promise<Buffer>}         - Resolves with the PDF as a Buffer
  */
@@ -29,16 +30,30 @@ const generateQuotationPdf = ({ quotation, charges, unit, contact, company, crea
     // ── Header bar ────────────────────────────────────────────────────────────
     doc.rect(0, 0, doc.page.width, 70).fill(PRIMARY);
 
+    // Logo is optional — pdfkit only embeds JPEG/PNG, so a WEBP/SVG upload (or
+    // any other decode failure) just falls back to the text-only header rather
+    // than breaking quotation generation for the whole company.
+    let headerTextX = 50;
+    const logoPath = resolveUploadPath(company?.logoUrl);
+    if (logoPath) {
+      try {
+        doc.image(logoPath, 50, 15, { fit: [40, 40] });
+        headerTextX = 100;
+      } catch {
+        // Unsupported image format — keep the default text-only header.
+      }
+    }
+
     doc
       .fillColor('#FFFFFF')
       .fontSize(20)
       .font('Helvetica-Bold')
-      .text(company?.name || 'Real Estate CRM', 50, 22);
+      .text(company?.name || 'Real Estate CRM', headerTextX, 22);
 
     doc
       .fontSize(9)
       .font('Helvetica')
-      .text('PROPERTY QUOTATION', 50, 48);
+      .text('PROPERTY QUOTATION', headerTextX, 48);
 
     // Quotation ID top-right
     doc
