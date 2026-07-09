@@ -1,10 +1,11 @@
 const db = require('../db');
-const { Prisma } = require('@prisma/client');
 const { sendSuccess, sendError } = require('../utils/response');
 const { getPagination } = require('../utils/pagination');
 const { VALID_PAYMENT_MODES } = require('../utils/constants');
+const { isPositiveInteger, isNonNegativeInteger } = require('../utils/money');
 const { syncInventory, createSalesOrder, generateInvoice, syncCustomer } = require('../utils/erpSync');
 const generateBookingReceiptPdf = require('../utils/generateBookingReceiptPdf');
+const logger = require('../utils/logger');
 
 // ─── Shared include ───────────────────────────────────────────────────────────
 
@@ -54,11 +55,11 @@ const createBooking = async (req, res, next) => {
     // ── Input validation ──────────────────────────────────────────────────────
     if (!inquiryId) return sendError(res, 'inquiryId is required', 400);
     if (!quotationId) return sendError(res, 'quotationId is required', 400);
-    if (finalAmount == null || isNaN(Number(finalAmount)) || Number(finalAmount) <= 0) {
-      return sendError(res, 'finalAmount must be a positive number', 400);
+    if (finalAmount == null || !isPositiveInteger(finalAmount)) {
+      return sendError(res, 'finalAmount must be a positive whole number', 400);
     }
-    if (bookingAmount == null || isNaN(Number(bookingAmount)) || Number(bookingAmount) <= 0) {
-      return sendError(res, 'bookingAmount must be a positive number', 400);
+    if (bookingAmount == null || !isPositiveInteger(bookingAmount)) {
+      return sendError(res, 'bookingAmount must be a positive whole number', 400);
     }
 
     // ── Verify inquiry belongs to this company ────────────────────────────────
@@ -84,23 +85,23 @@ const createBooking = async (req, res, next) => {
     }
 
     // ── Financial invariants (BUG-008) ────────────────────────────────────────
-    // Decimal-safe cross-field validation against the accepted quotation total.
-    const quotationTotal = new Prisma.Decimal(quotation.totalAmount);
-    const finalDec = new Prisma.Decimal(finalAmount);
-    const bookingDec = new Prisma.Decimal(bookingAmount);
-    const discountDec =
-      discountAmount != null ? new Prisma.Decimal(discountAmount) : new Prisma.Decimal(0);
-
-    if (discountAmount != null && (isNaN(Number(discountAmount)) || discountDec.lt(0))) {
-      return sendError(res, 'discountAmount must be a non-negative number', 400);
+    // All money fields are whole-rupee integers — plain integer comparisons.
+    if (discountAmount != null && !isNonNegativeInteger(discountAmount)) {
+      return sendError(res, 'discountAmount must be a non-negative whole number', 400);
     }
-    if (discountDec.gt(quotationTotal)) {
+
+    const quotationTotal = Number(quotation.totalAmount);
+    const finalNum = Number(finalAmount);
+    const bookingNum = Number(bookingAmount);
+    const discountNum = discountAmount != null ? Number(discountAmount) : 0;
+
+    if (discountNum > quotationTotal) {
       return sendError(res, 'discountAmount cannot exceed the quotation total', 400);
     }
-    if (finalDec.gt(quotationTotal)) {
+    if (finalNum > quotationTotal) {
       return sendError(res, 'finalAmount cannot exceed the quotation total', 400);
     }
-    if (bookingDec.gt(finalDec)) {
+    if (bookingNum > finalNum) {
       return sendError(res, 'bookingAmount cannot exceed finalAmount', 400);
     }
 
@@ -140,9 +141,9 @@ const createBooking = async (req, res, next) => {
           inquiryId,
           quotationId,
           unitId: quotation.unitId,
-          finalAmount: new Prisma.Decimal(finalAmount),
-          discountAmount: discountAmount != null ? new Prisma.Decimal(discountAmount) : new Prisma.Decimal(0),
-          bookingAmount: new Prisma.Decimal(bookingAmount),
+          finalAmount: finalNum,
+          discountAmount: discountNum,
+          bookingAmount: bookingNum,
           bookedById: req.user.id,
           status: 'CONFIRMED',
         },
@@ -217,7 +218,11 @@ const createBooking = async (req, res, next) => {
       booking.erpSalesOrderRef = salesOrderResult.refId;
     } catch (erpErr) {
       // ERP failure is non-blocking. Booking is valid; retry via the sync endpoint.
-      console.error('[ERP SYNC FAILED] Booking still valid.', erpErr.message);
+      logger.error('ERP sync failed on booking creation — booking still valid, retry via sync endpoint', {
+        bookingId: booking.id,
+        companyId,
+        error: erpErr.message,
+      });
     }
 
     return sendSuccess(res, 'Booking confirmed', { booking }, 201);
@@ -457,8 +462,8 @@ const addPayment = async (req, res, next) => {
     const { amount, mode, paidAt, referenceNumber } = req.body;
     const companyId = req.user.companyId;
 
-    if (amount == null || isNaN(Number(amount)) || Number(amount) <= 0) {
-      return sendError(res, 'amount must be a positive number', 400);
+    if (amount == null || !isPositiveInteger(amount)) {
+      return sendError(res, 'amount must be a positive whole number', 400);
     }
 
     if (!VALID_PAYMENT_MODES.includes(mode)) {
@@ -485,18 +490,22 @@ const addPayment = async (req, res, next) => {
       return sendError(res, 'Cannot record a payment against a cancelled booking', 400);
     }
 
-    // Prevent over-payment: cumulative payments must not exceed finalAmount.
+    // Prevent over-payment: cumulative payments (including the token/booking
+    // amount collected at booking time) must not exceed finalAmount. The token
+    // amount is stored on the Booking itself, not as a BookingPayment row, so
+    // it must be added in explicitly — omitting it previously allowed a booking
+    // to be over-collected by up to its full token amount.
     const paidAgg = await db.bookingPayment.aggregate({
       where: { bookingId: booking.id },
       _sum: { amount: true },
     });
-    const paidSoFar = new Prisma.Decimal(paidAgg._sum.amount || 0);
-    const newTotal = paidSoFar.plus(new Prisma.Decimal(amount));
-    if (newTotal.gt(new Prisma.Decimal(booking.finalAmount))) {
-      const remaining = new Prisma.Decimal(booking.finalAmount).minus(paidSoFar);
+    const paidSoFar = Number(paidAgg._sum.amount || 0) + Number(booking.bookingAmount);
+    const newTotal = paidSoFar + Number(amount);
+    if (newTotal > Number(booking.finalAmount)) {
+      const remaining = Number(booking.finalAmount) - paidSoFar;
       return sendError(
         res,
-        `Payment exceeds the remaining balance (₹${Number(remaining).toLocaleString('en-IN')}) for this booking`,
+        `Payment exceeds the remaining balance (₹${remaining.toLocaleString('en-IN')}) for this booking`,
         400
       );
     }
@@ -504,7 +513,7 @@ const addPayment = async (req, res, next) => {
     const payment = await db.bookingPayment.create({
       data: {
         bookingId: booking.id,
-        amount: new Prisma.Decimal(amount),
+        amount: Number(amount),
         mode,
         paidAt: paidAtDate,
         referenceNumber: referenceNumber?.trim() || null,

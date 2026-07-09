@@ -2,6 +2,7 @@ import { useState } from 'react';
 import FormLayout from './FormLayout';
 import Input from './Input';
 import Select from './Select';
+import { isPositiveInteger } from '../../utils/validation';
 
 const PAYMENT_MODE_OPTIONS = [
   { value: 'CASH', label: 'Cash' },
@@ -38,8 +39,8 @@ const PaymentForm = ({ onSubmit, onCancel, submitting = false, apiError = '' }) 
 
   const validate = () => {
     const errs = {};
-    if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0) {
-      errs.amount = 'Amount must be a positive number';
+    if (!isPositiveInteger(form.amount)) {
+      errs.amount = 'Amount must be a positive whole number';
     }
     if (!form.mode) errs.mode = 'Payment mode is required';
     if (!form.paidAt) errs.paidAt = 'Payment date is required';
@@ -51,7 +52,7 @@ const PaymentForm = ({ onSubmit, onCancel, submitting = false, apiError = '' }) 
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     await onSubmit({
-      amount: Number(form.amount),
+      amount: parseInt(form.amount, 10),
       mode: form.mode,
       paidAt: form.paidAt,
       referenceNumber: form.referenceNumber.trim() || undefined,
@@ -70,7 +71,7 @@ const PaymentForm = ({ onSubmit, onCancel, submitting = false, apiError = '' }) 
         name="amount"
         type="number"
         min="1"
-        step="0.01"
+        step="1"
         value={form.amount}
         onChange={handleChange}
         placeholder="e.g. 500000"

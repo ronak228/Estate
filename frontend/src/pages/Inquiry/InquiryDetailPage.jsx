@@ -39,6 +39,7 @@ const InquiryDetailPage = () => {
 
   const [editOpen, setEditOpen] = useState(false);
   const [stageChanging, setStageChanging] = useState(false);
+  const [stageChangeError, setStageChangeError] = useState('');
 
   const isManager = ['ADMIN', 'MANAGER'].includes(currentUser?.role);
 
@@ -73,13 +74,14 @@ const InquiryDetailPage = () => {
     const stage = e.target.value;
     if (!stage || stage === inquiry.stage) return;
     setStageChanging(true);
+    setStageChangeError('');
     try {
       const updated = await inquiryService.changeStage(id, stage);
       setInquiry((prev) => ({ ...prev, ...updated, followUps: prev.followUps, activities: prev.activities }));
       // Refresh to get updated activities
       fetchInquiry();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update stage');
+      setStageChangeError(err.response?.data?.message || 'Failed to update stage');
     } finally {
       setStageChanging(false);
     }
@@ -191,6 +193,9 @@ const InquiryDetailPage = () => {
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
+                {stageChangeError && (
+                  <span className="text-xs text-red-600">{stageChangeError}</span>
+                )}
               </div>
 
               {isManager && (

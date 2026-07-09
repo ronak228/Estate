@@ -154,7 +154,11 @@ const generateQuotationPdf = ({ quotation, charges, unit, contact, company, crea
     y += 24;
 
     const formatCurrency = (amount) => {
-      return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0,
+      }).format(amount);
     };
 
     // Base price row

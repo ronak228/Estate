@@ -14,6 +14,7 @@ const ConfirmDialog = ({
   danger = false,
   confirmLabel = 'Confirm',
   loading = false,
+  error = '',
 }) => {
   return (
     <Modal
@@ -44,6 +45,7 @@ const ConfirmDialog = ({
         )}
         <p className="text-sm text-gray-600">{message}</p>
       </div>
+      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </Modal>
   );
 };

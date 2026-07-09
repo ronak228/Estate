@@ -4,7 +4,8 @@ import EmptyState from './EmptyState';
 import { formatCurrency, formatDate } from '../../utils/format';
 
 /**
- * PaymentList — table of BookingPayment records for a booking's detail page.
+ * PaymentList — table of a booking's full payment history: the token/booking
+ * amount (flagged via `isToken`) plus every BookingPayment recorded after.
  */
 const PaymentList = ({ payments = [] }) => {
   if (payments.length === 0) {
@@ -43,7 +44,13 @@ const PaymentList = ({ payments = [] }) => {
                   {formatDate(payment.paidAt)}
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">
-                  <StatusBadge value={payment.mode} />
+                  {payment.isToken ? (
+                    <span className="inline-flex items-center font-medium rounded-full text-xs px-2.5 py-1 bg-primary/10 text-primary">
+                      Token / Booking Amount
+                    </span>
+                  ) : (
+                    <StatusBadge value={payment.mode} />
+                  )}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                   {payment.referenceNumber || '—'}

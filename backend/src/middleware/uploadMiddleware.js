@@ -26,7 +26,11 @@ const createUploader = (subfolder, allowedMimes, maxSizeMb = 5) => {
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error(`File type not allowed. Allowed types: ${allowedMimes.join(', ')}`), false);
+      // P3-25 fix: attach statusCode so errorMiddleware returns 400, not the
+      // generic 500 default for a plain Error with no statusCode.
+      const err = new Error(`File type not allowed. Allowed types: ${allowedMimes.join(', ')}`);
+      err.statusCode = 400;
+      cb(err, false);
     }
   };
 
@@ -58,11 +62,4 @@ const bookingDocumentUploader = createUploader(
   10
 );
 
-// Contract document uploader — stored under /uploads/contracts/ (Module 5)
-const contractDocumentUploader = createUploader(
-  'contracts',
-  ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
-  10
-);
-
-module.exports = { companyLogoUploader, documentUploader, bookingDocumentUploader, contractDocumentUploader };
+module.exports = { companyLogoUploader, documentUploader, bookingDocumentUploader };

@@ -3,15 +3,17 @@ const { Prisma } = require('@prisma/client');
 const { sendSuccess, sendError } = require('../utils/response');
 const { getPagination } = require('../utils/pagination');
 const { VALID_UNIT_STATUSES, MANUAL_UNIT_STATUSES } = require('../utils/constants');
+const { isPositiveInteger } = require('../utils/money');
 
 /**
  * Calculate area and basePrice from dimensions using decimal-safe math (BUG-003).
  * Server is always the source of truth — never trust client-calculated values.
- * Returns Prisma.Decimal values so no floating-point rounding is persisted.
+ * area stays a Prisma.Decimal (physical dimension in sq. ft.); basePrice is
+ * rounded to a whole-rupee Int since all money fields are integer-only.
  */
 function calcPricing(width, length, pricePerSqFt) {
   const area = new Prisma.Decimal(width).times(length);
-  const basePrice = area.times(pricePerSqFt);
+  const basePrice = Math.round(area.times(pricePerSqFt).toNumber());
   return { area, basePrice };
 }
 
@@ -30,8 +32,8 @@ const createUnit = async (req, res, next) => {
     if (length == null || isNaN(Number(length)) || Number(length) <= 0) {
       return sendError(res, 'length must be a positive number', 400);
     }
-    if (pricePerSqFt == null || isNaN(Number(pricePerSqFt)) || Number(pricePerSqFt) <= 0) {
-      return sendError(res, 'pricePerSqFt must be a positive number', 400);
+    if (pricePerSqFt == null || !isPositiveInteger(pricePerSqFt)) {
+      return sendError(res, 'pricePerSqFt must be a positive whole number', 400);
     }
 
     // Verify project belongs to this company
@@ -47,7 +49,7 @@ const createUnit = async (req, res, next) => {
         width: new Prisma.Decimal(width),
         length: new Prisma.Decimal(length),
         area,
-        pricePerSqFt: new Prisma.Decimal(pricePerSqFt),
+        pricePerSqFt: Number(pricePerSqFt),
         basePrice,
       },
       include: {
@@ -144,8 +146,8 @@ const updateUnit = async (req, res, next) => {
     if (length !== undefined && (isNaN(Number(length)) || Number(length) <= 0)) {
       return sendError(res, 'length must be a positive number', 400);
     }
-    if (pricePerSqFt !== undefined && (isNaN(Number(pricePerSqFt)) || Number(pricePerSqFt) <= 0)) {
-      return sendError(res, 'pricePerSqFt must be a positive number', 400);
+    if (pricePerSqFt !== undefined && !isPositiveInteger(pricePerSqFt)) {
+      return sendError(res, 'pricePerSqFt must be a positive whole number', 400);
     }
 
     const updateData = {};
@@ -161,7 +163,7 @@ const updateUnit = async (req, res, next) => {
       const { area, basePrice } = calcPricing(newWidth, newLength, newPricePerSqFt);
       updateData.width = new Prisma.Decimal(newWidth);
       updateData.length = new Prisma.Decimal(newLength);
-      updateData.pricePerSqFt = new Prisma.Decimal(newPricePerSqFt);
+      updateData.pricePerSqFt = Number(newPricePerSqFt);
       updateData.area = area;
       updateData.basePrice = basePrice;
     }

@@ -61,6 +61,7 @@ const ChargeLineEditor = ({ charges = [], onChange }) => {
             onChange={(e) => updateCharge(index, 'amount', e.target.value)}
             placeholder="Amount"
             min="0"
+            step="1"
             className="w-36 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           />
           <button

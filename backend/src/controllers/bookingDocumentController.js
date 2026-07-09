@@ -1,6 +1,8 @@
 const db = require('../db');
 const { sendSuccess, sendError } = require('../utils/response');
 const { VALID_DOCUMENT_TYPES } = require('../utils/constants');
+const logger = require('../utils/logger');
+const { verifyFileSignature } = require('../utils/fileSignature');
 const fs = require('fs');
 const path = require('path');
 
@@ -29,12 +31,25 @@ const uploadDocument = async (req, res, next) => {
     if (!req.file) return sendError(res, 'File is required', 400);
 
     const { type } = req.body;
-    if (!type) return sendError(res, 'type is required', 400);
+    if (!type) {
+      fs.unlink(req.file.path, () => {});
+      return sendError(res, 'type is required', 400);
+    }
     if (!VALID_DOCUMENT_TYPES.includes(type)) {
+      fs.unlink(req.file.path, () => {});
       return sendError(res, `type must be one of: ${VALID_DOCUMENT_TYPES.join(', ')}`, 400);
     }
 
-    // Build the relative URL path served by express.static
+    // P2-15 fix: the multer fileFilter only checked the client-declared
+    // Content-Type header (attacker-controlled); verify the actual file bytes
+    // match the declared type before accepting it.
+    if (!verifyFileSignature(req.file.path, req.file.mimetype)) {
+      fs.unlink(req.file.path, () => {});
+      return sendError(res, 'File content does not match its declared type', 400);
+    }
+
+    // Build the relative URL path — served via the authenticated, tenant-scoped
+    // GET /api/bookings/:id/documents/:documentId/download route (NOT express.static).
     const fileUrl = `/uploads/bookings/${path.basename(req.file.path)}`;
 
     const document = await db.bookingDocument.create({
@@ -115,7 +130,7 @@ const deleteDocument = async (req, res, next) => {
     // Delete the file from disk (best-effort — don't fail if file already gone)
     const filePath = path.join(process.cwd(), document.fileUrl);
     fs.unlink(filePath, (err) => {
-      if (err) console.warn('[FILE DELETE]', err.message);
+      if (err) logger.warn('Booking document file delete failed (best-effort)', { documentId: document.id, error: err.message });
     });
 
     return sendSuccess(res, 'Document deleted', {});

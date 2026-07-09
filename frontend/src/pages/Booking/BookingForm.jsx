@@ -3,6 +3,7 @@ import bookingService from '../../services/bookingService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
 import { formatCurrency } from '../../utils/format';
+import { isPositiveInteger, isNonNegativeInteger } from '../../utils/validation';
 
 /**
  * BookingForm — convert an accepted-quotation inquiry into a confirmed booking.
@@ -35,14 +36,14 @@ const BookingForm = ({ inquiry, quotation, onSuccess, onCancel }) => {
 
   const validate = () => {
     const errs = {};
-    if (!form.finalAmount || isNaN(Number(form.finalAmount)) || Number(form.finalAmount) <= 0) {
-      errs.finalAmount = 'Final amount must be a positive number';
+    if (!isPositiveInteger(form.finalAmount)) {
+      errs.finalAmount = 'Final amount must be a positive whole number';
     }
-    if (form.discountAmount !== '' && isNaN(Number(form.discountAmount))) {
-      errs.discountAmount = 'Discount must be a valid number';
+    if (!isNonNegativeInteger(form.discountAmount)) {
+      errs.discountAmount = 'Discount must be a non-negative whole number';
     }
-    if (!form.bookingAmount || isNaN(Number(form.bookingAmount)) || Number(form.bookingAmount) <= 0) {
-      errs.bookingAmount = 'Booking (token) amount must be a positive number';
+    if (!isPositiveInteger(form.bookingAmount)) {
+      errs.bookingAmount = 'Booking (token) amount must be a positive whole number';
     }
     return errs;
   };
@@ -58,9 +59,9 @@ const BookingForm = ({ inquiry, quotation, onSuccess, onCancel }) => {
       await bookingService.createBooking({
         inquiryId: inquiry.id,
         quotationId: quotation.id,
-        finalAmount: Number(form.finalAmount),
-        discountAmount: Number(form.discountAmount) || 0,
-        bookingAmount: Number(form.bookingAmount),
+        finalAmount: parseInt(form.finalAmount, 10),
+        discountAmount: form.discountAmount ? parseInt(form.discountAmount, 10) : 0,
+        bookingAmount: parseInt(form.bookingAmount, 10),
       });
       onSuccess();
     } catch (err) {
@@ -124,7 +125,7 @@ const BookingForm = ({ inquiry, quotation, onSuccess, onCancel }) => {
         name="finalAmount"
         type="number"
         min="1"
-        step="0.01"
+        step="1"
         value={form.finalAmount}
         onChange={handleChange}
         placeholder="e.g. 4500000"
@@ -137,7 +138,7 @@ const BookingForm = ({ inquiry, quotation, onSuccess, onCancel }) => {
         name="discountAmount"
         type="number"
         min="0"
-        step="0.01"
+        step="1"
         value={form.discountAmount}
         onChange={handleChange}
         placeholder="0"
@@ -149,7 +150,7 @@ const BookingForm = ({ inquiry, quotation, onSuccess, onCancel }) => {
         name="bookingAmount"
         type="number"
         min="1"
-        step="0.01"
+        step="1"
         value={form.bookingAmount}
         onChange={handleChange}
         placeholder="e.g. 100000"

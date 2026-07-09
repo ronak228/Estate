@@ -26,17 +26,49 @@ if (
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// ─── Trust Proxy (P1-08) ──────────────────────────────────────────────────────
+// express-rate-limit (and req.ip generally) needs this to see the real client
+// IP once the app sits behind a reverse proxy/load balancer. Without it, every
+// request appears to come from the proxy's own address, collapsing the
+// per-IP login rate limit into a single shared bucket for all users — or, if
+// a proxy is trusted elsewhere without care, becomes spoofable via
+// X-Forwarded-For. There is no safe universal default (the correct value
+// depends on how many proxy hops sit in front of this process), so it is off
+// (Express default: disabled) unless TRUST_PROXY is set. Set it to match your
+// actual deployment topology, e.g. TRUST_PROXY=1 for exactly one reverse proxy
+// (nginx/ALB) in front, or TRUST_PROXY=loopback for local-only proxies.
+if (process.env.TRUST_PROXY) {
+  const trustProxy = process.env.TRUST_PROXY;
+  app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
+}
+
 // ─── Security ─────────────────────────────────────────────────────────────────
-app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' }, // allow serving uploaded files to frontend
-  })
-);
+// P2-20 fix (2026-07-08): the relaxed cross-origin-resource-policy was previously
+// applied globally so every JSON API response could be embedded cross-origin,
+// not just the static uploads it was meant for. helmet() now uses its safe
+// default (same-origin); the relaxed policy is applied only on the
+// /uploads/companies static route below, where it's actually needed.
+app.use(helmet());
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
+// P2-21 fix: support a comma-separated allowlist (CLIENT_URLS) so staging and
+// production frontends — or multiple company-branded domains — can be trusted
+// simultaneously. CLIENT_URL is kept as a single-origin fallback for existing
+// deployments that only set that variable.
+const allowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      // Allow non-browser requests (no Origin header, e.g. curl/health checks)
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   })
 );
@@ -55,7 +87,11 @@ if (process.env.NODE_ENV !== 'test') {
 // served statically. Sensitive booking documents (ID proofs, signed agreements,
 // payment proofs) are NOT exposed here — they are downloaded through the
 // authenticated, tenant-scoped route GET /api/bookings/:id/documents/:documentId/download.
-app.use('/uploads/companies', express.static(path.join(__dirname, '..', 'uploads', 'companies')));
+app.use(
+  '/uploads/companies',
+  helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }),
+  express.static(path.join(__dirname, '..', 'uploads', 'companies'))
+);
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api', routes);

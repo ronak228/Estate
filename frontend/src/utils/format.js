@@ -27,11 +27,16 @@ export const formatDateTime = (dateStr, timezone = 'Asia/Kolkata') => {
 };
 
 /**
- * Format a number as currency.
+ * Format a number as currency. All monetary amounts in this app are stored
+ * as whole rupees (no paise/decimals), so fraction digits are always suppressed.
  */
 export const formatCurrency = (amount, currency = 'INR') => {
   if (amount == null) return '—';
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format(amount);
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
 };
 
 /**

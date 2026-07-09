@@ -34,6 +34,7 @@ const EmployeePage = () => {
   const [editTarget, setEditTarget] = useState(null);
   const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [deactivateLoading, setDeactivateLoading] = useState(false);
+  const [deactivateError, setDeactivateError] = useState('');
   const [resetPasswordTarget, setResetPasswordTarget] = useState(null);
 
   const fetchEmployees = useCallback(async () => {
@@ -63,12 +64,13 @@ const EmployeePage = () => {
   const handleDeactivateToggle = async () => {
     if (!deactivateTarget) return;
     setDeactivateLoading(true);
+    setDeactivateError('');
     try {
       await companyService.updateEmployeeStatus(deactivateTarget.id, !deactivateTarget.isActive);
       setDeactivateTarget(null);
       fetchEmployees();
     } catch (err) {
-      alert(err.response?.data?.message || 'Action failed');
+      setDeactivateError(err.response?.data?.message || 'Action failed');
     } finally {
       setDeactivateLoading(false);
     }
@@ -109,7 +111,7 @@ const EmployeePage = () => {
                 <Button
                   variant={row.isActive ? 'outline' : 'ghost'}
                   size="sm"
-                  onClick={(e) => { e.stopPropagation(); setDeactivateTarget(row); }}
+                  onClick={(e) => { e.stopPropagation(); setDeactivateError(''); setDeactivateTarget(row); }}
                 >
                   {row.isActive ? 'Deactivate' : 'Activate'}
                 </Button>
@@ -231,6 +233,7 @@ const EmployeePage = () => {
         onConfirm={handleDeactivateToggle}
         onCancel={() => setDeactivateTarget(null)}
         loading={deactivateLoading}
+        error={deactivateError}
       />
     </PageLayout>
   );

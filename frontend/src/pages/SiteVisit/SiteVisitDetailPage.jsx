@@ -24,6 +24,7 @@ const SiteVisitDetailPage = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [completeError, setCompleteError] = useState('');
   const [quoteOpen, setQuoteOpen] = useState(false);
 
   const fetchSiteVisit = useCallback(async () => {
@@ -53,12 +54,13 @@ const SiteVisitDetailPage = () => {
 
   const handleComplete = async () => {
     setCompleting(true);
+    setCompleteError('');
     try {
       await siteVisitService.completeSiteVisit(siteVisit.id);
       setCompleteOpen(false);
       fetchSiteVisit();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to complete site visit');
+      setCompleteError(err.response?.data?.message || 'Failed to complete site visit');
     } finally {
       setCompleting(false);
     }
@@ -84,7 +86,7 @@ const SiteVisitDetailPage = () => {
                 variant="outline"
                 size="sm"
                 icon={CheckCircle}
-                onClick={() => setCompleteOpen(true)}
+                onClick={() => { setCompleteError(''); setCompleteOpen(true); }}
                 className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
               >
                 Mark Complete
@@ -220,6 +222,7 @@ const SiteVisitDetailPage = () => {
         title="Mark Visit as Completed"
         message="This will mark the site visit as completed and log an activity on the inquiry. This action cannot be undone."
         confirmLabel="Mark Complete"
+        error={completeError}
       />
 
       {/* Create Quotation Modal (opens after visit is completed) */}

@@ -19,11 +19,6 @@ const {
 } = require('../controllers/bookingDocumentController');
 const { bookingDocumentUploader } = require('../middleware/uploadMiddleware');
 
-// Module 5 — nested routes
-const contractDocumentRoutes = require('./contractDocumentRoutes');
-const dueDiligenceRoutes = require('./dueDiligenceRoutes');
-const financingRoutes = require('./financingRoutes');
-
 const CRM = ['ADMIN', 'MANAGER', 'SALES_EXECUTIVE'];
 const MANAGERS = ['ADMIN', 'MANAGER'];
 
@@ -61,21 +56,5 @@ router.get(
   downloadDocument
 );
 router.delete('/:id/documents/:documentId', authenticate, authorize(...MANAGERS), deleteDocument);
-
-// ─── Module 5: Contract Documents, Due Diligence, Financing ──────────────────
-router.use('/:id/contract-documents', contractDocumentRoutes);
-router.use('/:id/due-diligence', dueDiligenceRoutes);
-router.use('/:id/financing', financingRoutes);
-
-// ─── Module 6: Transaction Execution & Closing ───────────────────────────────
-const transactionRoutes = require('./transactionRoutes');
-const invoiceRoutes = require('./invoiceRoutes');
-const transactionPaymentRoutes = require('./transactionPaymentRoutes');
-const titleTransferRoutes = require('./titleTransferRoutes');
-
-router.use('/:id/transaction', transactionRoutes);
-router.use('/:id/invoices', invoiceRoutes);
-router.use('/:id/transaction-payments', transactionPaymentRoutes);
-router.use('/:id/title-transfer', titleTransferRoutes);
 
 module.exports = router;

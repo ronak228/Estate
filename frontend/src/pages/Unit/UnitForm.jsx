@@ -3,6 +3,7 @@ import unitService from '../../services/unitService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
 import { formatCurrency } from '../../utils/format';
+import { isPositiveInteger } from '../../utils/validation';
 
 /**
  * UnitForm — create or edit a unit within a project.
@@ -27,9 +28,10 @@ const UnitForm = ({ unit, projectId, onSuccess, onCancel }) => {
   // Derived display values — live calculation, never sent to server
   const widthNum = parseFloat(form.width) || 0;
   const lengthNum = parseFloat(form.length) || 0;
-  const pricePerSqFtNum = parseFloat(form.pricePerSqFt) || 0;
+  const pricePerSqFtNum = parseInt(form.pricePerSqFt, 10) || 0;
   const derivedArea = widthNum * lengthNum;
-  const derivedBasePrice = derivedArea * pricePerSqFtNum;
+  // basePrice is a whole-rupee Int on the server — round the preview to match.
+  const derivedBasePrice = Math.round(derivedArea * pricePerSqFtNum);
   const hasCalc = derivedArea > 0 && derivedBasePrice > 0;
 
   useEffect(() => {
@@ -55,8 +57,8 @@ const UnitForm = ({ unit, projectId, onSuccess, onCancel }) => {
     if (!form.unitNumber.trim()) errs.unitNumber = 'Unit number is required';
     if (!form.width || parseFloat(form.width) <= 0) errs.width = 'Width must be a positive number';
     if (!form.length || parseFloat(form.length) <= 0) errs.length = 'Length must be a positive number';
-    if (!form.pricePerSqFt || parseFloat(form.pricePerSqFt) <= 0) {
-      errs.pricePerSqFt = 'Price per sq. ft. must be a positive number';
+    if (!isPositiveInteger(form.pricePerSqFt)) {
+      errs.pricePerSqFt = 'Price per sq. ft. must be a positive whole number';
     }
     return errs;
   };
@@ -74,7 +76,7 @@ const UnitForm = ({ unit, projectId, onSuccess, onCancel }) => {
         unitNumber: form.unitNumber.trim(),
         width: parseFloat(form.width),
         length: parseFloat(form.length),
-        pricePerSqFt: parseFloat(form.pricePerSqFt),
+        pricePerSqFt: parseInt(form.pricePerSqFt, 10),
       };
 
       if (isEdit) {
@@ -146,8 +148,8 @@ const UnitForm = ({ unit, projectId, onSuccess, onCancel }) => {
         required
         error={errors.pricePerSqFt}
         placeholder="e.g. 5000"
-        min="0.01"
-        step="0.01"
+        min="1"
+        step="1"
       />
 
       {/* Live Calculation Preview */}

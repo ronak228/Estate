@@ -41,6 +41,7 @@ const CompanyListPage = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [suspendTarget, setSuspendTarget] = useState(null);
   const [suspendLoading, setSuspendLoading] = useState(false);
+  const [suspendError, setSuspendError] = useState('');
 
   const fetchCompanies = useCallback(async () => {
     setLoading(true);
@@ -68,13 +69,14 @@ const CompanyListPage = () => {
   const handleSuspendToggle = async () => {
     if (!suspendTarget) return;
     setSuspendLoading(true);
+    setSuspendError('');
     try {
       const newStatus = suspendTarget.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
       await companyService.updateCompanyStatus(suspendTarget.id, newStatus);
       setSuspendTarget(null);
       fetchCompanies();
     } catch (err) {
-      alert(err.response?.data?.message || 'Action failed');
+      setSuspendError(err.response?.data?.message || 'Action failed');
     } finally {
       setSuspendLoading(false);
     }
@@ -89,7 +91,7 @@ const CompanyListPage = () => {
         <Button
           variant={row.status === 'ACTIVE' ? 'outline' : 'ghost'}
           size="sm"
-          onClick={(e) => { e.stopPropagation(); setSuspendTarget(row); }}
+          onClick={(e) => { e.stopPropagation(); setSuspendError(''); setSuspendTarget(row); }}
         >
           {row.status === 'ACTIVE' ? 'Suspend' : 'Reactivate'}
         </Button>
@@ -169,6 +171,7 @@ const CompanyListPage = () => {
         onConfirm={handleSuspendToggle}
         onCancel={() => setSuspendTarget(null)}
         loading={suspendLoading}
+        error={suspendError}
       />
     </PageLayout>
   );

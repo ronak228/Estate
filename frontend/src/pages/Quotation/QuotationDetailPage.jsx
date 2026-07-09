@@ -36,7 +36,9 @@ const QuotationDetailPage = () => {
   const [error, setError] = useState('');
 
   const [decisionChanging, setDecisionChanging] = useState(false);
+  const [decisionChangeError, setDecisionChangeError] = useState('');
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadPdfError, setDownloadPdfError] = useState('');
   const [requoteOpen, setRequoteOpen] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
 
@@ -75,11 +77,12 @@ const QuotationDetailPage = () => {
     const decision = e.target.value;
     if (!decision || decision === quotation.decision) return;
     setDecisionChanging(true);
+    setDecisionChangeError('');
     try {
       const updated = await quotationService.updateDecision(id, decision);
       setQuotation((prev) => ({ ...prev, decision: updated.decision }));
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update decision');
+      setDecisionChangeError(err.response?.data?.message || 'Failed to update decision');
     } finally {
       setDecisionChanging(false);
     }
@@ -87,6 +90,7 @@ const QuotationDetailPage = () => {
 
   const handleDownloadPdf = async () => {
     setDownloadingPdf(true);
+    setDownloadPdfError('');
     try {
       const blob = await quotationService.getQuotationPdfBlob(id);
       const url = URL.createObjectURL(blob);
@@ -96,7 +100,7 @@ const QuotationDetailPage = () => {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      alert('Failed to download PDF');
+      setDownloadPdfError('Failed to download PDF');
     } finally {
       setDownloadingPdf(false);
     }
@@ -149,6 +153,10 @@ const QuotationDetailPage = () => {
         }
       />
 
+      {downloadPdfError && (
+        <p className="text-sm text-red-600 mb-4">{downloadPdfError}</p>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Left — Quotation Preview */}
@@ -176,6 +184,9 @@ const QuotationDetailPage = () => {
               </select>
               {decisionChanging && (
                 <span className="text-xs text-gray-400 animate-pulse">Saving...</span>
+              )}
+              {decisionChangeError && (
+                <span className="text-xs text-red-600">{decisionChangeError}</span>
               )}
             </div>
             <div className="mt-3">

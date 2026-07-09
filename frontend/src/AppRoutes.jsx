@@ -31,12 +31,6 @@ import QuotationDetailPage from './pages/Quotation/QuotationDetailPage';
 import BookingPage from './pages/Booking/BookingPage';
 import BookingDetailPage from './pages/Booking/BookingDetailPage';
 
-// Module 5 — Contract, Due Diligence & Financing
-import ContractDetailPage from './pages/Contract/ContractDetailPage';
-
-// Module 6 — Transaction Execution & Closing
-import TransactionPage from './pages/Transaction/TransactionPage';
-import TransactionDetailPage from './pages/Transaction/TransactionDetailPage';
 
 // Project & Unit Inventory
 import ProjectPage from './pages/Project/ProjectPage';
@@ -196,33 +190,6 @@ const AppRoutes = () => {
           }
         />
 
-        {/* ── Module 5: Contract, Due Diligence & Financing ── */}
-        <Route
-          path="/bookings/:id/contract"
-          element={
-            <ProtectedRoute roles={CRM_ROLES}>
-              <ContractDetailPage />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* ── Module 6: Transaction Execution & Closing ── */}
-        <Route
-          path="/transactions"
-          element={
-            <ProtectedRoute roles={CRM_ROLES}>
-              <TransactionPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/bookings/:id/transaction"
-          element={
-            <ProtectedRoute roles={CRM_ROLES}>
-              <TransactionDetailPage />
-            </ProtectedRoute>
-          }
-        />
       </Route>
 
       {/* Root redirect */}

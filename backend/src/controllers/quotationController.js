@@ -1,8 +1,8 @@
 const db = require('../db');
-const { Prisma } = require('@prisma/client');
 const { sendSuccess, sendError } = require('../utils/response');
 const { getPagination } = require('../utils/pagination');
 const { VALID_QUOTATION_DECISIONS } = require('../utils/constants');
+const { isNonNegativeInteger } = require('../utils/money');
 const generateQuotationPdf = require('../utils/generateQuotationPdf');
 
 // ─── Shared include shape ─────────────────────────────────────────────────────
@@ -59,19 +59,16 @@ const createQuotation = async (req, res, next) => {
       if (!c.label || c.label.toString().trim() === '') {
         return sendError(res, 'Each charge must have a label', 400);
       }
-      if (c.amount == null || isNaN(Number(c.amount)) || Number(c.amount) < 0) {
-        return sendError(res, `Charge "${c.label}" has an invalid amount`, 400);
+      if (c.amount == null || !isNonNegativeInteger(c.amount)) {
+        return sendError(res, `Charge "${c.label}" must have a non-negative whole number amount`, 400);
       }
     }
 
     // Snapshot basePrice from unit at creation time — never re-read live afterward.
-    // Decimal-safe math (BUG-003): no floating-point rounding on money.
-    const basePrice = new Prisma.Decimal(unit.basePrice);
-    const chargesTotal = charges.reduce(
-      (sum, c) => sum.plus(new Prisma.Decimal(c.amount)),
-      new Prisma.Decimal(0)
-    );
-    const totalAmount = basePrice.plus(chargesTotal);
+    // All money fields are whole-rupee integers — plain integer arithmetic is safe.
+    const basePrice = Number(unit.basePrice);
+    const chargesTotal = charges.reduce((sum, c) => sum + Number(c.amount), 0);
+    const totalAmount = basePrice + chargesTotal;
 
     const validUntilDate = validUntil ? new Date(validUntil) : undefined;
     if (validUntil && isNaN(validUntilDate?.getTime())) {
@@ -89,7 +86,7 @@ const createQuotation = async (req, res, next) => {
         charges: {
           create: charges.map((c) => ({
             label: c.label.trim(),
-            amount: new Prisma.Decimal(c.amount),
+            amount: Number(c.amount),
           })),
         },
       },

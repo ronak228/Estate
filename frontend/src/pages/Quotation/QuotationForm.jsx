@@ -6,6 +6,7 @@ import Input from '../../components/shared/Input';
 import Select from '../../components/shared/Select';
 import UnitAvailabilityList from '../../components/shared/UnitAvailabilityList';
 import ChargeLineEditor from '../../components/shared/ChargeLineEditor';
+import { isNonNegativeInteger } from '../../utils/validation';
 
 /**
  * QuotationForm — create a new quotation against an inquiry.
@@ -68,8 +69,8 @@ const QuotationForm = ({ defaultInquiryId, onSuccess, onCancel }) => {
         errs.charges = 'All charges must have a label';
         break;
       }
-      if (c.amount === '' || isNaN(Number(c.amount)) || Number(c.amount) < 0) {
-        errs.charges = 'All charges must have a valid amount';
+      if (c.amount === '' || !isNonNegativeInteger(c.amount)) {
+        errs.charges = 'All charges must have a non-negative whole number amount';
         break;
       }
     }
@@ -87,7 +88,7 @@ const QuotationForm = ({ defaultInquiryId, onSuccess, onCancel }) => {
       await quotationService.createQuotation({
         inquiryId: form.inquiryId,
         unitId: selectedUnit.id,
-        charges: charges.map((c) => ({ label: c.label.trim(), amount: Number(c.amount) })),
+        charges: charges.map((c) => ({ label: c.label.trim(), amount: parseInt(c.amount, 10) })),
         validUntil: form.validUntil || undefined,
       });
       onSuccess();

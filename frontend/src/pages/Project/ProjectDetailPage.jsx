@@ -35,6 +35,7 @@ const ProjectDetailPage = () => {
   const [statusUnit, setStatusUnit] = useState(null);
   const [statusValue, setStatusValue] = useState('');
   const [statusSubmitting, setStatusSubmitting] = useState(false);
+  const [statusChangeError, setStatusChangeError] = useState('');
 
   const fetchProject = useCallback(async () => {
     setLoading(true);
@@ -57,13 +58,14 @@ const ProjectDetailPage = () => {
   const handleStatusChange = async () => {
     if (!statusUnit || !statusValue) return;
     setStatusSubmitting(true);
+    setStatusChangeError('');
     try {
       await unitService.updateStatus(statusUnit.id, statusValue);
       setStatusUnit(null);
       setStatusValue('');
       fetchProject();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update status');
+      setStatusChangeError(err.response?.data?.message || 'Failed to update status');
     } finally {
       setStatusSubmitting(false);
     }
@@ -129,6 +131,7 @@ const ProjectDetailPage = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    setStatusChangeError('');
                     setStatusUnit(row);
                     setStatusValue(row.status);
                   }}
@@ -303,6 +306,9 @@ const ProjectDetailPage = () => {
             <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
               Note: RESERVED status is set automatically by the booking process and cannot be applied manually. A unit with an active booking must be released by cancelling the booking.
             </p>
+            {statusChangeError && (
+              <p className="text-sm text-red-600">{statusChangeError}</p>
+            )}
             <div className="flex justify-end gap-3 pt-2 border-t border-gray-200">
               <Button
                 variant="outline"

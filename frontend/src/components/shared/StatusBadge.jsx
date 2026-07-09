@@ -89,54 +89,6 @@ const STATUS_COLORS = {
   ID_PROOF: 'bg-amber-100 text-amber-700',
   PAYMENT_PROOF: 'bg-emerald-100 text-emerald-700',
 
-  // ─── Contract Document Type (Module 5) ────────────────────────────────────
-  SALE_AGREEMENT: 'bg-indigo-100 text-indigo-700',
-  ALLOTMENT_LETTER: 'bg-blue-100 text-blue-700',
-  NOC: 'bg-teal-100 text-teal-700',
-  TITLE_DEED: 'bg-purple-100 text-purple-700',
-  CUSTOMER_ID_PROOF: 'bg-amber-100 text-amber-700',
-  CUSTOMER_ADDRESS_PROOF: 'bg-orange-100 text-orange-700',
-  LOAN_SANCTION_LETTER: 'bg-sky-100 text-sky-700',
-
-  // ─── Signature Status (Module 5) ──────────────────────────────────────────
-  SIGNED: 'bg-emerald-100 text-emerald-700',
-
-  // ─── Due Diligence Status (Module 5) ──────────────────────────────────────
-  IN_PROGRESS: 'bg-blue-100 text-blue-700',
-  FAILED: 'bg-red-100 text-red-700',
-
-  // ─── Financing Type (Module 5) ────────────────────────────────────────────
-  SELF_FUNDED: 'bg-emerald-100 text-emerald-700',
-  HOME_LOAN: 'bg-sky-100 text-sky-700',
-  CONSTRUCTION_LINKED_PLAN: 'bg-violet-100 text-violet-700',
-
-  // ─── Financing Approval Status (Module 5) ─────────────────────────────────
-  NOT_APPLIED: 'bg-gray-100 text-gray-600',
-  APPLIED: 'bg-blue-100 text-blue-700',
-  APPROVED: 'bg-emerald-100 text-emerald-700',
-
-  // ─── Module 6: Transaction Execution & Closing ────────────────────────────
-
-  // TransactionStatus
-  // PENDING already mapped
-  // IN_PROGRESS already mapped
-  // COMPLETED already mapped
-  // CANCELLED already mapped
-
-  // InvoiceStatus
-  DRAFT: 'bg-gray-100 text-gray-600',
-  ISSUED: 'bg-blue-100 text-blue-700',
-  PARTIALLY_PAID: 'bg-amber-100 text-amber-700',
-  PAID: 'bg-emerald-100 text-emerald-700',
-  OVERDUE: 'bg-red-100 text-red-700',
-
-  // TransactionPaymentStatus
-  RECONCILED: 'bg-emerald-100 text-emerald-700',
-
-  // TitleTransferStatus
-  NOT_STARTED: 'bg-gray-100 text-gray-600',
-  // IN_PROGRESS already mapped
-  // COMPLETED already mapped
 };
 
 const STATUS_LABELS = {
@@ -213,54 +165,6 @@ const STATUS_LABELS = {
   ID_PROOF: 'ID Proof',
   PAYMENT_PROOF: 'Payment Proof',
 
-  // ─── Contract Document Type labels (Module 5) ─────────────────────────────
-  SALE_AGREEMENT: 'Sale Agreement',
-  ALLOTMENT_LETTER: 'Allotment Letter',
-  NOC: 'NOC',
-  TITLE_DEED: 'Title Deed',
-  CUSTOMER_ID_PROOF: 'Customer ID Proof',
-  CUSTOMER_ADDRESS_PROOF: 'Address Proof',
-  LOAN_SANCTION_LETTER: 'Loan Sanction Letter',
-
-  // ─── Signature Status labels (Module 5) ───────────────────────────────────
-  SIGNED: 'Signed',
-
-  // ─── Due Diligence Status labels (Module 5) ───────────────────────────────
-  IN_PROGRESS: 'In Progress',
-  FAILED: 'Failed',
-
-  // ─── Financing Type labels (Module 5) ─────────────────────────────────────
-  SELF_FUNDED: 'Self Funded',
-  HOME_LOAN: 'Home Loan',
-  CONSTRUCTION_LINKED_PLAN: 'Construction Linked',
-
-  // ─── Financing Approval Status labels (Module 5) ──────────────────────────
-  NOT_APPLIED: 'Not Applied',
-  APPLIED: 'Applied',
-  APPROVED: 'Approved',
-
-  // ─── Module 6: Transaction Execution & Closing ────────────────────────────
-
-  // TransactionStatus
-  // PENDING already mapped
-  // IN_PROGRESS already mapped
-  // COMPLETED already mapped
-  // CANCELLED already mapped
-
-  // InvoiceStatus
-  DRAFT: 'Draft',
-  ISSUED: 'Issued',
-  PARTIALLY_PAID: 'Partially Paid',
-  PAID: 'Paid',
-  OVERDUE: 'Overdue',
-
-  // TransactionPaymentStatus
-  RECONCILED: 'Reconciled',
-
-  // TitleTransferStatus
-  NOT_STARTED: 'Not Started',
-  // IN_PROGRESS already mapped
-  // COMPLETED already mapped
 };
 
 const StatusBadge = ({ value, label, size = 'sm' }) => {

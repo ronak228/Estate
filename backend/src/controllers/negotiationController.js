@@ -1,6 +1,6 @@
 const db = require('../db');
-const { Prisma } = require('@prisma/client');
 const { sendSuccess, sendError } = require('../utils/response');
+const { isPositiveInteger, isNonNegativeInteger } = require('../utils/money');
 
 // ─── Shared include ───────────────────────────────────────────────────────────
 
@@ -19,8 +19,11 @@ const createNegotiation = async (req, res, next) => {
     const companyId = req.user.companyId;
 
     if (!inquiryId) return sendError(res, 'inquiryId is required', 400);
-    if (offeredPrice == null || isNaN(Number(offeredPrice)) || Number(offeredPrice) <= 0) {
-      return sendError(res, 'offeredPrice must be a positive number', 400);
+    if (offeredPrice == null || !isPositiveInteger(offeredPrice)) {
+      return sendError(res, 'offeredPrice must be a positive whole number', 400);
+    }
+    if (discountAmount != null && !isNonNegativeInteger(discountAmount)) {
+      return sendError(res, 'discountAmount must be a non-negative whole number', 400);
     }
 
     // Verify inquiry belongs to this company
@@ -41,8 +44,8 @@ const createNegotiation = async (req, res, next) => {
       data: {
         inquiryId,
         quotationId: quotationId || null,
-        offeredPrice: new Prisma.Decimal(offeredPrice),
-        discountAmount: discountAmount != null ? new Prisma.Decimal(discountAmount) : new Prisma.Decimal(0),
+        offeredPrice: Number(offeredPrice),
+        discountAmount: discountAmount != null ? Number(discountAmount) : 0,
         notes: notes?.trim() || null,
         createdById: req.user.id,
       },

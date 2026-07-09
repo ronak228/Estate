@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Download, Plus, RefreshCw, CheckCircle, AlertCircle, FileSignature, Receipt } from 'lucide-react';
+import { ArrowLeft, Download, Plus, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
 import bookingService from '../../services/bookingService';
 import bookingDocumentService from '../../services/bookingDocumentService';
 import negotiationService from '../../services/negotiationService';
@@ -19,6 +19,7 @@ import PaymentForm from '../../components/shared/PaymentForm';
 import DocumentUploader from '../../components/shared/DocumentUploader';
 
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/format';
+import { getBookingFinancials, getPaymentHistory } from '../../utils/booking';
 
 const BookingDetailPage = () => {
   const { id } = useParams();
@@ -30,6 +31,7 @@ const BookingDetailPage = () => {
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [downloadError, setDownloadError] = useState('');
 
   // Negotiation history (fetched by inquiryId)
   const [negotiations, setNegotiations] = useState([]);
@@ -87,6 +89,7 @@ const BookingDetailPage = () => {
 
   const handleDownloadReceipt = async () => {
     setDownloadingPdf(true);
+    setDownloadError('');
     try {
       const blob = await bookingService.getReceiptBlob(id);
       const url = URL.createObjectURL(blob);
@@ -96,7 +99,7 @@ const BookingDetailPage = () => {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      alert('Failed to download receipt');
+      setDownloadError('Failed to download receipt');
     } finally {
       setDownloadingPdf(false);
     }
@@ -177,8 +180,10 @@ const BookingDetailPage = () => {
   if (error) return <PageLayout><ErrorState message={error} onRetry={fetchBooking} /></PageLayout>;
   if (!booking) return null;
 
-  const { inquiry, quotation, unit, payments = [], documents = [], bookedBy } = booking;
+  const { inquiry, quotation, unit, documents = [], bookedBy } = booking;
   const contact = inquiry?.contact;
+  const paymentHistory = getPaymentHistory(booking);
+  const { totalAmount, tokenAmount, totalPaid, remainingAmount } = getBookingFinancials(booking);
 
   return (
     <PageLayout>
@@ -189,22 +194,6 @@ const BookingDetailPage = () => {
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => navigate('/bookings')}>
               Back
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              icon={FileSignature}
-              onClick={() => navigate(`/bookings/${id}/contract`)}
-            >
-              Contract
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              icon={Receipt}
-              onClick={() => navigate(`/bookings/${id}/transaction`)}
-            >
-              Transaction
             </Button>
             <Button
               variant="outline"
@@ -229,6 +218,10 @@ const BookingDetailPage = () => {
         }
       />
 
+      {downloadError && (
+        <p className="text-sm text-red-600 mb-4">{downloadError}</p>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* ── Left column (2/3) ─────────────────────────────────────────────── */}
@@ -244,7 +237,7 @@ const BookingDetailPage = () => {
                 </Button>
               )}
             </div>
-            <PaymentList payments={payments} />
+            <PaymentList payments={paymentHistory} />
           </div>
 
           {/* Documents section */}
@@ -352,21 +345,27 @@ const BookingDetailPage = () => {
                 </div>
               )}
               <div className="flex justify-between border-t border-gray-100 pt-3">
-                <dt className="font-semibold text-gray-900">Final Amount</dt>
+                <dt className="font-semibold text-gray-900">Total Amount</dt>
                 <dd className="font-bold text-primary text-base">
-                  {formatCurrency(booking.finalAmount)}
+                  {formatCurrency(totalAmount)}
                 </dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-gray-500">Token / Booking Amount</dt>
                 <dd className="font-medium text-gray-900">
-                  {formatCurrency(booking.bookingAmount)}
+                  {formatCurrency(tokenAmount)}
                 </dd>
               </div>
               <div className="flex justify-between border-t border-gray-100 pt-3">
-                <dt className="text-gray-500">Total Paid</dt>
-                <dd className="font-semibold text-gray-900">
-                  {formatCurrency(payments.reduce((sum, p) => sum + Number(p.amount), 0))}
+                <dt className="text-gray-500">Paid Amount</dt>
+                <dd className="font-semibold text-emerald-600">
+                  {formatCurrency(totalPaid)}
+                </dd>
+              </div>
+              <div className="flex justify-between border-t border-gray-100 pt-3">
+                <dt className="font-semibold text-gray-900">Remaining Amount</dt>
+                <dd className={`font-bold text-base ${remainingAmount > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                  {remainingAmount > 0 ? formatCurrency(remainingAmount) : 'Fully Paid'}
                 </dd>
               </div>
             </dl>
