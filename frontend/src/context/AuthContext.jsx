@@ -62,6 +62,12 @@ export const AuthProvider = ({ children }) => {
     setUser((prev) => ({ ...prev, ...updatedUser }));
   }, []);
 
+  // Browser tab title follows the logged-in company, everywhere — a Super
+  // Admin (no single company) or a signed-out visitor sees the product name.
+  useEffect(() => {
+    document.title = user?.companyName ? `${user.companyName} — Real Estate CRM` : 'Real Estate CRM';
+  }, [user?.companyName]);
+
   return (
     <AuthContext.Provider value={{ user, token, loading, login, logout, updateUser }}>
       {children}

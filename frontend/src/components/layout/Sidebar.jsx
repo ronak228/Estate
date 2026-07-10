@@ -143,7 +143,9 @@ const Sidebar = () => {
               <Building2 size={18} className="text-white" />
             </div>
           )}
-          <span className="font-semibold text-gray-900 text-sm">Real Estate CRM</span>
+          <span className="font-semibold text-gray-900 text-sm truncate min-w-0 flex-1" title={user?.companyName || 'Real Estate CRM'}>
+            {user?.companyName || 'Real Estate CRM'}
+          </span>
         </div>
       </div>
 

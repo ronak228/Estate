@@ -23,7 +23,10 @@ router.get('/', authenticate, authorize('SUPER_ADMIN'), listCompanies);
 
 // Important: /me routes must be registered BEFORE /:id to avoid "me" being
 // treated as a UUID parameter.
-router.get('/me', authenticate, authorize('ADMIN', 'MANAGER', 'SALES_EXECUTIVE'), getMyCompany);
+// Company Settings is an ADMIN-only surface end to end — MANAGER/SALES_EXECUTIVE
+// must not be able to read or write it, not just be kept off the settings page.
+// (Their own company name/logo for branding come from /auth/me, not this route.)
+router.get('/me', authenticate, authorize('ADMIN'), getMyCompany);
 router.put(
   '/me/settings',
   authenticate,

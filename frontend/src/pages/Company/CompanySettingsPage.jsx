@@ -12,11 +12,12 @@ import ErrorState from '../../components/shared/ErrorState';
 const CompanySettingsPage = () => {
   const { updateUser } = useAuth();
   const [company, setCompany] = useState(null);
-  const [form, setForm] = useState({ timezone: '', currency: '', primaryColor: '' });
+  const [form, setForm] = useState({ name: '', timezone: '', currency: '', primaryColor: '' });
   const [logoFile, setLogoFile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [nameError, setNameError] = useState('');
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
@@ -25,6 +26,7 @@ const CompanySettingsPage = () => {
         const data = await companyService.getMyCompany();
         setCompany(data);
         setForm({
+          name: data.name || '',
           timezone: data.timezone || 'Asia/Kolkata',
           currency: data.currency || 'INR',
           primaryColor: data.primaryColor || '',
@@ -41,16 +43,23 @@ const CompanySettingsPage = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    if (name === 'name') setNameError('');
     setSuccess('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.name.trim()) {
+      setNameError('Company name is required');
+      return;
+    }
+
     setSaving(true);
     setError('');
     setSuccess('');
     try {
       const formData = new FormData();
+      formData.append('name', form.name.trim());
       formData.append('timezone', form.timezone);
       formData.append('currency', form.currency);
       if (form.primaryColor) formData.append('primaryColor', form.primaryColor);
@@ -78,6 +87,23 @@ const CompanySettingsPage = () => {
 
       <div className="max-w-2xl">
         <form onSubmit={handleSubmit}>
+          {/* General */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-5">
+            <h2 className="text-sm font-semibold text-gray-900 mb-4">General</h2>
+            <Input
+              label="Company Name"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              required
+              error={nameError}
+              placeholder="e.g. Devam Villa"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Shown across the CRM — sidebar, top bar, browser tab, and on quotations and receipts.
+            </p>
+          </div>
+
           {/* Company Logo */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-5">
             <h2 className="text-sm font-semibold text-gray-900 mb-4">Branding</h2>

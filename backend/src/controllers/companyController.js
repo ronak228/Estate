@@ -290,9 +290,14 @@ const getMyCompany = async (req, res, next) => {
  */
 const updateMyCompanySettings = async (req, res, next) => {
   try {
-    const { timezone, currency, primaryColor } = req.body;
+    const { name, timezone, currency, primaryColor } = req.body;
+
+    if (name !== undefined && !name.trim()) {
+      return sendError(res, 'Company name cannot be empty', 400);
+    }
 
     const updateData = {};
+    if (name !== undefined) updateData.name = name.trim();
     if (timezone) updateData.timezone = timezone;
     if (currency) updateData.currency = currency;
     if (primaryColor !== undefined) updateData.primaryColor = primaryColor;
