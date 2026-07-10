@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import unitService from '../../services/unitService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
+import { showSuccess } from '../../lib/toast';
 import { formatCurrency } from '../../utils/format';
 import { isPositiveInteger } from '../../utils/validation';
 import { calcAreaAndBasePrice } from '../../utils/unitCalc';
@@ -93,6 +94,7 @@ const UnitForm = ({ unit, projectId, onSuccess, onCancel }) => {
       } else {
         await unitService.createUnit({ projectId, ...payload });
       }
+      showSuccess(isEdit ? 'Unit updated successfully' : 'Unit added successfully');
       onSuccess();
     } catch (err) {
       setApiError(err.response?.data?.message || 'Failed to save unit');

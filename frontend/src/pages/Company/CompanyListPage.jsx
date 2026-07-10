@@ -13,6 +13,7 @@ import ConfirmDialog from '../../components/shared/ConfirmDialog';
 import Modal from '../../components/shared/Modal';
 import ErrorState from '../../components/shared/ErrorState';
 import CompanyForm from './CompanyForm';
+import { showSuccess } from '../../lib/toast';
 import { formatDate } from '../../utils/format';
 
 const COLUMNS = [
@@ -73,6 +74,7 @@ const CompanyListPage = () => {
     try {
       const newStatus = suspendTarget.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
       await companyService.updateCompanyStatus(suspendTarget.id, newStatus);
+      showSuccess(newStatus === 'SUSPENDED' ? 'Company suspended' : 'Company reactivated');
       setSuspendTarget(null);
       fetchCompanies();
     } catch (err) {

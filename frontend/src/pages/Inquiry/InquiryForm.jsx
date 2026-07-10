@@ -3,6 +3,8 @@ import inquiryService from '../../services/inquiryService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
 import Select from '../../components/shared/Select';
+import Textarea from '../../components/shared/Textarea';
+import { showSuccess } from '../../lib/toast';
 
 const SOURCE_OPTIONS = [
   { value: 'WALK_IN', label: 'Walk-in' },
@@ -125,6 +127,7 @@ const InquiryForm = ({ inquiry, onSuccess, onCancel }) => {
           brokerId: form.brokerId || undefined,
         });
       }
+      showSuccess(isEdit ? 'Inquiry updated successfully' : 'Inquiry created successfully');
       onSuccess();
     } catch (err) {
       setApiError(err.response?.data?.message || 'Failed to save inquiry');
@@ -235,17 +238,14 @@ const InquiryForm = ({ inquiry, onSuccess, onCancel }) => {
       />
 
       {/* ── Notes ── */}
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">Notes (optional)</label>
-        <textarea
-          name="notes"
-          value={form.notes}
-          onChange={handleChange}
-          rows={3}
-          placeholder="Any additional information..."
-          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-        />
-      </div>
+      <Textarea
+        label="Notes (optional)"
+        name="notes"
+        value={form.notes}
+        onChange={handleChange}
+        rows={3}
+        placeholder="Any additional information..."
+      />
 
       {apiError && (
         <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">

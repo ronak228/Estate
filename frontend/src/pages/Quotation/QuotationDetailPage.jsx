@@ -12,9 +12,11 @@ import ErrorState from '../../components/shared/ErrorState';
 import Modal from '../../components/shared/Modal';
 import Select from '../../components/shared/Select';
 import QuotationPreview from '../../components/shared/QuotationPreview';
+import Card from '../../components/shared/Card';
 import QuotationForm from './QuotationForm';
 import BookingForm from '../Booking/BookingForm';
 import { useAuth } from '../../context/AuthContext';
+import { showSuccess, showError, getErrorMessage } from '../../lib/toast';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/format';
 
 const DECISION_OPTIONS = [
@@ -81,8 +83,9 @@ const QuotationDetailPage = () => {
     try {
       const updated = await quotationService.updateDecision(id, decision);
       setQuotation((prev) => ({ ...prev, decision: updated.decision }));
+      showSuccess('Decision updated');
     } catch (err) {
-      setDecisionChangeError(err.response?.data?.message || 'Failed to update decision');
+      setDecisionChangeError(getErrorMessage(err, 'Failed to update decision'));
     } finally {
       setDecisionChanging(false);
     }
@@ -101,6 +104,7 @@ const QuotationDetailPage = () => {
       URL.revokeObjectURL(url);
     } catch {
       setDownloadPdfError('Failed to download PDF');
+      showError('Failed to download PDF');
     } finally {
       setDownloadingPdf(false);
     }
@@ -168,8 +172,7 @@ const QuotationDetailPage = () => {
         <div className="flex flex-col gap-4">
 
           {/* Decision control */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Customer Decision</h2>
+          <Card title="Customer Decision">
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-500">Decision:</span>
               <select
@@ -204,11 +207,10 @@ const QuotationDetailPage = () => {
                 → Convert to Booking
               </button>
             )}
-          </div>
+          </Card>
 
           {/* Quick summary */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Summary</h2>
+          <Card title="Summary">
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <dt className="text-gray-500">Contact</dt>
@@ -275,7 +277,7 @@ const QuotationDetailPage = () => {
                 <dd className="font-medium text-gray-900">{createdBy?.fullName || '—'}</dd>
               </div>
             </dl>
-          </div>
+          </Card>
 
           {/* Quotation ID */}
           <div className="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3">

@@ -3,6 +3,8 @@ import interactionService from '../../services/interactionService';
 import FormLayout from './FormLayout';
 import Select from './Select';
 import Input from './Input';
+import Textarea from './Textarea';
+import { showSuccess } from '../../lib/toast';
 
 const TYPE_OPTIONS = [
   { value: 'CALL', label: 'Phone Call' },
@@ -55,6 +57,7 @@ const InteractionForm = ({ contactId, inquiryOptions = [], onSuccess, onCancel }
         inquiryId: form.inquiryId || undefined,
         occurredAt: form.occurredAt || undefined,
       });
+      showSuccess('Interaction logged');
       onSuccess();
     } catch (err) {
       setApiError(err.response?.data?.message || 'Failed to log interaction');
@@ -100,22 +103,16 @@ const InteractionForm = ({ contactId, inquiryOptions = [], onSuccess, onCancel }
         onChange={handleChange}
       />
 
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">
-          Notes <span className="text-red-500 ml-1">*</span>
-        </label>
-        <textarea
-          name="notes"
-          value={form.notes}
-          onChange={handleChange}
-          rows={4}
-          placeholder="What was discussed..."
-          className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none ${
-            errors.notes ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white hover:border-gray-400'
-          }`}
-        />
-        {errors.notes && <p className="text-xs text-red-600">{errors.notes}</p>}
-      </div>
+      <Textarea
+        label="Notes"
+        name="notes"
+        value={form.notes}
+        onChange={handleChange}
+        rows={4}
+        required
+        error={errors.notes}
+        placeholder="What was discussed..."
+      />
 
       {apiError && (
         <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">

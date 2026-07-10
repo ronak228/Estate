@@ -12,9 +12,11 @@ import Button from '../../components/shared/Button';
 import Modal from '../../components/shared/Modal';
 import ErrorState from '../../components/shared/ErrorState';
 import LoadingState from '../../components/shared/LoadingState';
+import Card from '../../components/shared/Card';
 import ProjectForm from './ProjectForm';
 import UnitForm from '../Unit/UnitForm';
 import BulkUnitForm from '../Unit/BulkUnitForm';
+import { showSuccess, getErrorMessage } from '../../lib/toast';
 import { formatCurrency, formatDate } from '../../utils/format';
 
 const MANAGERS = ['ADMIN', 'MANAGER'];
@@ -63,11 +65,12 @@ const ProjectDetailPage = () => {
     setStatusChangeError('');
     try {
       await unitService.updateStatus(statusUnit.id, statusValue);
+      showSuccess('Unit status updated');
       setStatusUnit(null);
       setStatusValue('');
       fetchProject();
     } catch (err) {
-      setStatusChangeError(err.response?.data?.message || 'Failed to update status');
+      setStatusChangeError(getErrorMessage(err, 'Failed to update status'));
     } finally {
       setStatusSubmitting(false);
     }
@@ -212,24 +215,24 @@ const ProjectDetailPage = () => {
 
       {/* Project Info + Unit Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+        <Card padding="p-4">
           <p className="text-xs text-gray-500 mb-1">Status</p>
           <StatusBadge value={project.status} />
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+        </Card>
+        <Card padding="p-4">
           <p className="text-xs text-gray-500 mb-1">Total Units</p>
           <p className="text-lg font-semibold text-gray-900">{unitSummary?.total ?? 0}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+        </Card>
+        <Card padding="p-4">
           <p className="text-xs text-gray-500 mb-1">Available</p>
           <p className="text-lg font-semibold text-emerald-600">{unitSummary?.available ?? 0}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+        </Card>
+        <Card padding="p-4">
           <p className="text-xs text-gray-500 mb-1">Reserved / Sold</p>
           <p className="text-lg font-semibold text-gray-700">
             {(unitSummary?.reserved ?? 0)} / {(unitSummary?.sold ?? 0)}
           </p>
-        </div>
+        </Card>
       </div>
 
       {/* Units Table */}

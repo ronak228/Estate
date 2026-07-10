@@ -4,6 +4,7 @@ import { Building2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/shared/Button';
 import Input from '../../components/shared/Input';
+import Card from '../../components/shared/Card';
 
 const LoginPage = () => {
   const { login, user } = useAuth();
@@ -53,8 +54,7 @@ const LoginPage = () => {
           <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
         </div>
 
-        {/* Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <Card padding="p-6" className="animate-scale-in">
           <form onSubmit={handleSubmit} noValidate>
             <div className="flex flex-col gap-4">
               <Input
@@ -108,7 +108,7 @@ const LoginPage = () => {
               </Button>
             </div>
           </form>
-        </div>
+        </Card>
 
         <p className="text-center text-xs text-gray-400 mt-6">
           Real Estate CRM — Phase 1

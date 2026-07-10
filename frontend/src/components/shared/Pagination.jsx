@@ -11,15 +11,15 @@ const Pagination = ({ page, pageSize, total, onPageChange }) => {
   if (total === 0) return null;
 
   return (
-    <div className="flex items-center justify-between mt-4 text-sm text-gray-600">
+    <div className="flex flex-wrap items-center justify-between gap-3 mt-4 text-sm text-gray-600">
       <span>
         Showing {start}–{end} of {total} records
       </span>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 flex-wrap">
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 ease-snappy"
           aria-label="Previous page"
         >
           <ChevronLeft size={16} />
@@ -43,7 +43,7 @@ const Pagination = ({ page, pageSize, total, onPageChange }) => {
               <button
                 key={item}
                 onClick={() => onPageChange(item)}
-                className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors duration-150 ease-snappy ${
                   item === page
                     ? 'bg-primary text-white'
                     : 'hover:bg-gray-100 text-gray-700'
@@ -57,7 +57,7 @@ const Pagination = ({ page, pageSize, total, onPageChange }) => {
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors duration-150 ease-snappy"
           aria-label="Next page"
         >
           <ChevronRight size={16} />

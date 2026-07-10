@@ -19,14 +19,14 @@ const DataTable = ({ columns = [], rows = [], onRowClick, loading = false, empty
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl shadow-sm border border-gray-200">
+    <div className="overflow-x-auto rounded-xl border border-gray-200">
       <table className="min-w-full divide-y divide-gray-200 bg-white">
-        <thead className="bg-gray-50">
+        <thead className="bg-gray-50 sticky top-0 z-10 shadow-[0_1px_0_0_rgba(15,23,42,0.06)]">
           <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
-                className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap"
+                className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap"
               >
                 {col.label}
               </th>
@@ -39,8 +39,8 @@ const DataTable = ({ columns = [], rows = [], onRowClick, loading = false, empty
               key={row.id || rowIdx}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               className={`
-                transition-colors
-                ${onRowClick ? 'cursor-pointer hover:bg-primary-50' : 'hover:bg-gray-50'}
+                transition-colors duration-150 ease-snappy hover:bg-gray-50
+                ${onRowClick ? 'cursor-pointer' : ''}
               `}
             >
               {columns.map((col) => (

@@ -8,6 +8,7 @@ import Input from '../../components/shared/Input';
 import Select from '../../components/shared/Select';
 import UnitAvailabilityList from '../../components/shared/UnitAvailabilityList';
 import ChargeLineEditor from '../../components/shared/ChargeLineEditor';
+import { showSuccess } from '../../lib/toast';
 import { isNonNegativeInteger } from '../../utils/validation';
 
 /**
@@ -123,6 +124,7 @@ const QuotationForm = ({ defaultInquiryId, onSuccess, onCancel }) => {
         charges: charges.map((c) => ({ label: c.label.trim(), amount: parseInt(c.amount, 10) })),
         validUntil: form.validUntil || undefined,
       });
+      showSuccess('Quotation created successfully');
       onSuccess();
     } catch (err) {
       setApiError(err.response?.data?.message || 'Failed to create quotation');

@@ -37,13 +37,13 @@ const Modal = ({ isOpen, onClose, title, children, footer, size = 'md' }) => {
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
         aria-hidden="true"
       />
 
       {/* Dialog */}
-      <div className={`relative bg-white rounded-xl shadow-xl w-full ${sizeClass} max-h-[90vh] flex flex-col`}>
+      <div className={`relative bg-white rounded-xl shadow-dropdown w-full ${sizeClass} max-h-[90vh] flex flex-col animate-scale-in`}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 id="modal-title" className="text-base font-semibold text-gray-900">

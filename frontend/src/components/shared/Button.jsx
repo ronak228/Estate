@@ -18,19 +18,22 @@ const Button = ({
   ...props
 }) => {
   const base =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+    'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-150 ease-snappy focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]';
 
+  // Primary/secondary/danger carry a fine top-edge highlight (real depth,
+  // not a flat fill) and only pick up shadow elevation on hover — ghost and
+  // outline stay flat at every state so they read unmistakably secondary.
   const variants = {
     primary:
-      'bg-primary text-white hover:bg-primary-600 focus:ring-primary',
+      'bg-primary text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.16)] hover:bg-primary-600 hover:shadow-card-hover focus:ring-primary',
     secondary:
-      'bg-secondary text-white hover:bg-sky-600 focus:ring-secondary',
+      'bg-secondary text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.16)] hover:bg-sky-600 hover:shadow-card-hover focus:ring-secondary',
     danger:
-      'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+      'bg-danger-600 text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.16)] hover:bg-red-700 hover:shadow-card-hover focus:ring-red-500',
     ghost:
-      'bg-transparent text-gray-600 hover:bg-gray-100 focus:ring-gray-300',
+      'bg-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-300',
     outline:
-      'border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 focus:ring-primary',
+      'border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:ring-primary',
   };
 
   const sizes = {

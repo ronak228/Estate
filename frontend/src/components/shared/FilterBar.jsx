@@ -16,7 +16,7 @@ const FilterBar = ({ filters = [], values = {}, onChange }) => {
               key={filter.key}
               value={values[filter.key] || ''}
               onChange={(e) => handleChange(filter.key, e.target.value)}
-              className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white transition-colors duration-150 ease-snappy hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             >
               <option value="">{filter.label}</option>
               {(filter.options || []).map((opt) => (
@@ -36,7 +36,7 @@ const FilterBar = ({ filters = [], values = {}, onChange }) => {
                 type="date"
                 value={values[filter.key] || ''}
                 onChange={(e) => handleChange(filter.key, e.target.value)}
-                className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white transition-colors duration-150 ease-snappy hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
           );
@@ -48,7 +48,7 @@ const FilterBar = ({ filters = [], values = {}, onChange }) => {
       {Object.values(values).some(Boolean) && (
         <button
           onClick={() => onChange({})}
-          className="text-xs text-gray-500 hover:text-gray-700 underline"
+          className="text-xs text-gray-500 hover:text-gray-700 underline transition-colors duration-150 ease-snappy"
         >
           Clear filters
         </button>

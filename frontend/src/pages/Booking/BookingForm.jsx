@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import bookingService from '../../services/bookingService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
+import { showSuccess } from '../../lib/toast';
 import { formatCurrency } from '../../utils/format';
 import { isPositiveInteger, isNonNegativeInteger } from '../../utils/validation';
 
@@ -63,6 +64,7 @@ const BookingForm = ({ inquiry, quotation, onSuccess, onCancel }) => {
         discountAmount: form.discountAmount ? parseInt(form.discountAmount, 10) : 0,
         bookingAmount: parseInt(form.bookingAmount, 10),
       });
+      showSuccess('Booking confirmed successfully');
       onSuccess();
     } catch (err) {
       setApiError(err.response?.data?.message || 'Failed to create booking');

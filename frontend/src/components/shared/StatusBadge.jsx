@@ -3,6 +3,10 @@
  * Shared across all modules. Add new mappings here as modules are built.
  */
 
+// Consolidated to 7 intentional tones (was ~12 hand-mapped hues): gray (neutral/
+// default), sky/blue/indigo (a single "informational" family, graded by how far
+// along the process a state is), amber (needs attention), emerald (positive/
+// final), red (negative). Same enum keys throughout — visual only.
 const STATUS_COLORS = {
   // ─── Project Status (Project & Unit Inventory) ────────────────────────────────
   UPCOMING: 'bg-gray-100 text-gray-600',
@@ -25,33 +29,33 @@ const STATUS_COLORS = {
   NEUTRAL: 'bg-gray-100 text-gray-600',
   INFO: 'bg-blue-100 text-blue-700',
 
-  // Role display
-  SUPER_ADMIN: 'bg-purple-100 text-purple-700',
-  ADMIN: 'bg-indigo-100 text-indigo-700',
+  // Role display — graded within the blue family by seniority
+  SUPER_ADMIN: 'bg-indigo-100 text-indigo-700',
+  ADMIN: 'bg-blue-100 text-blue-700',
   MANAGER: 'bg-sky-100 text-sky-700',
-  SALES_EXECUTIVE: 'bg-teal-100 text-teal-700',
+  SALES_EXECUTIVE: 'bg-gray-100 text-gray-600',
 
   // ─── Inquiry Stage ──────────────────────────────────────────────────────────
   NEW: 'bg-gray-100 text-gray-600',
   CONTACTED: 'bg-blue-100 text-blue-700',
   QUALIFIED: 'bg-indigo-100 text-indigo-700',
-  SITE_VISIT_SCHEDULED: 'bg-violet-100 text-violet-700',
+  SITE_VISIT_SCHEDULED: 'bg-sky-100 text-sky-700',
   NEGOTIATION: 'bg-amber-100 text-amber-700',
   BOOKED: 'bg-emerald-100 text-emerald-700',
   NOT_INTERESTED: 'bg-red-100 text-red-600',
 
   // ─── Inquiry Source ─────────────────────────────────────────────────────────
-  WALK_IN: 'bg-teal-100 text-teal-700',
+  WALK_IN: 'bg-gray-100 text-gray-600',
   PHONE_CALL: 'bg-sky-100 text-sky-700',
   WEBSITE: 'bg-blue-100 text-blue-700',
-  WHATSAPP: 'bg-green-100 text-green-700',
-  REFERRAL: 'bg-purple-100 text-purple-700',
-  ADVERTISEMENT: 'bg-orange-100 text-orange-700',
+  WHATSAPP: 'bg-emerald-100 text-emerald-700',
+  REFERRAL: 'bg-indigo-100 text-indigo-700',
+  ADVERTISEMENT: 'bg-amber-100 text-amber-700',
   OTHER: 'bg-gray-100 text-gray-600',
 
   // ─── Interaction Type (Module 2) ─────────────────────────────────────────────
   CALL: 'bg-sky-100 text-sky-700',
-  MEETING: 'bg-violet-100 text-violet-700',
+  MEETING: 'bg-indigo-100 text-indigo-700',
   EMAIL: 'bg-blue-100 text-blue-700',
   NOTE: 'bg-gray-100 text-gray-600',
 
@@ -80,8 +84,8 @@ const STATUS_COLORS = {
   CASH: 'bg-emerald-100 text-emerald-700',
   CHEQUE: 'bg-blue-100 text-blue-700',
   BANK_TRANSFER: 'bg-indigo-100 text-indigo-700',
-  UPI: 'bg-violet-100 text-violet-700',
-  CARD: 'bg-sky-100 text-sky-700',
+  UPI: 'bg-sky-100 text-sky-700',
+  CARD: 'bg-gray-100 text-gray-600',
 
   // ─── Document Type (Module 4) ─────────────────────────────────────────────
   BOOKING_FORM: 'bg-blue-100 text-blue-700',

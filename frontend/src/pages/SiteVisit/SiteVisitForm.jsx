@@ -4,7 +4,9 @@ import inquiryService from '../../services/inquiryService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
 import Select from '../../components/shared/Select';
+import Textarea from '../../components/shared/Textarea';
 import UnitAvailabilityList from '../../components/shared/UnitAvailabilityList';
+import { showSuccess } from '../../lib/toast';
 
 /**
  * SiteVisitForm — create or reschedule a site visit.
@@ -112,6 +114,7 @@ const SiteVisitForm = ({ siteVisit, onSuccess, onCancel }) => {
           unitIds,
         });
       }
+      showSuccess(isEdit ? 'Site visit updated successfully' : 'Site visit scheduled successfully');
       onSuccess();
     } catch (err) {
       setApiError(err.response?.data?.message || 'Failed to save site visit');
@@ -172,17 +175,14 @@ const SiteVisitForm = ({ siteVisit, onSuccess, onCancel }) => {
         />
       )}
 
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium text-gray-700">Notes (optional)</label>
-        <textarea
-          name="notes"
-          value={form.notes}
-          onChange={handleChange}
-          rows={3}
-          placeholder="Any notes about the visit..."
-          className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-        />
-      </div>
+      <Textarea
+        label="Notes (optional)"
+        name="notes"
+        value={form.notes}
+        onChange={handleChange}
+        rows={3}
+        placeholder="Any notes about the visit..."
+      />
 
       {/* Unit picker — shown if there's a project context. Multi-select: a
           customer may be interested in more than one unit before deciding. */}

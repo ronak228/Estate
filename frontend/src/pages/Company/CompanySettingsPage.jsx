@@ -8,6 +8,8 @@ import Button from '../../components/shared/Button';
 import FileUploader from '../../components/shared/FileUploader';
 import LoadingState from '../../components/shared/LoadingState';
 import ErrorState from '../../components/shared/ErrorState';
+import Card from '../../components/shared/Card';
+import { showSuccess } from '../../lib/toast';
 
 const CompanySettingsPage = () => {
   const { updateUser } = useAuth();
@@ -18,7 +20,6 @@ const CompanySettingsPage = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [nameError, setNameError] = useState('');
-  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     const fetchCompany = async () => {
@@ -44,7 +45,6 @@ const CompanySettingsPage = () => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     if (name === 'name') setNameError('');
-    setSuccess('');
   };
 
   const handleSubmit = async (e) => {
@@ -56,7 +56,6 @@ const CompanySettingsPage = () => {
 
     setSaving(true);
     setError('');
-    setSuccess('');
     try {
       const formData = new FormData();
       formData.append('name', form.name.trim());
@@ -68,7 +67,7 @@ const CompanySettingsPage = () => {
       const updated = await companyService.updateMyCompanySettings(formData);
       setCompany(updated);
       setLogoFile(null);
-      setSuccess('Settings saved successfully');
+      showSuccess('Settings saved successfully');
       // Keep the sidebar/topbar branding in sync without requiring a re-login.
       updateUser({ companyName: updated.name, companyLogoUrl: updated.logoUrl });
     } catch (err) {
@@ -88,8 +87,7 @@ const CompanySettingsPage = () => {
       <div className="max-w-2xl">
         <form onSubmit={handleSubmit}>
           {/* General */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">General</h2>
+          <Card title="General" padding="p-6" className="mb-5">
             <Input
               label="Company Name"
               name="name"
@@ -102,12 +100,10 @@ const CompanySettingsPage = () => {
             <p className="text-xs text-gray-400 mt-1">
               Shown across the CRM — sidebar, top bar, browser tab, and on quotations and receipts.
             </p>
-          </div>
+          </Card>
 
           {/* Company Logo */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">Branding</h2>
-
+          <Card title="Branding" padding="p-6" className="mb-5">
             {company?.logoUrl && (
               <div className="mb-4">
                 <p className="text-xs text-gray-500 mb-2">Current Logo</p>
@@ -148,12 +144,10 @@ const CompanySettingsPage = () => {
                 />
               </div>
             </div>
-          </div>
+          </Card>
 
           {/* Regional Settings */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">Regional Settings</h2>
-
+          <Card title="Regional Settings" padding="p-6" className="mb-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium text-gray-700">Timezone</label>
@@ -185,16 +179,11 @@ const CompanySettingsPage = () => {
                 </select>
               </div>
             </div>
-          </div>
+          </Card>
 
           {error && (
             <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
               {error}
-            </div>
-          )}
-          {success && (
-            <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-4">
-              {success}
             </div>
           )}
 

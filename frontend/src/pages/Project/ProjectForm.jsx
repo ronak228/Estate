@@ -3,6 +3,7 @@ import projectService from '../../services/projectService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
 import Select from '../../components/shared/Select';
+import { showSuccess } from '../../lib/toast';
 
 const STATUS_OPTIONS = [
   { value: 'UPCOMING', label: 'Upcoming' },
@@ -72,6 +73,7 @@ const ProjectForm = ({ project, onSuccess, onCancel }) => {
           status: form.status,
         });
       }
+      showSuccess(isEdit ? 'Project updated successfully' : 'Project created successfully');
       onSuccess();
     } catch (err) {
       setApiError(err.response?.data?.message || 'Failed to save project');

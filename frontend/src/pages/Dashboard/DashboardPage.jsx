@@ -9,6 +9,9 @@ import PageLayout from '../../components/shared/PageLayout';
 import PageHeader from '../../components/shared/PageHeader';
 import DataTable from '../../components/shared/DataTable';
 import LoadingState from '../../components/shared/LoadingState';
+import Card from '../../components/shared/Card';
+import StatCard from '../../components/shared/StatCard';
+import { showError } from '../../lib/toast';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/format';
 import {
   Building2, Users, PhoneCall, CalendarCheck, FileText,
@@ -50,37 +53,7 @@ const TOOLTIP_STYLE = {
   cursor: { fill: '#f9fafb' },
 };
 
-const StatCard = ({ icon: Icon, label, value, sub, color = 'primary' }) => {
-  const colorMap = {
-    primary: 'bg-primary-50 text-primary',
-    sky: 'bg-sky-50 text-sky-600',
-    amber: 'bg-amber-50 text-amber-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    red: 'bg-red-50 text-red-600',
-  };
-
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 flex items-center gap-4">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${colorMap[color] || colorMap.primary}`}>
-        <Icon size={22} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-semibold text-gray-900 mt-0.5 truncate">
-          {value ?? <span className="text-gray-300">—</span>}
-        </p>
-        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
-      </div>
-    </div>
-  );
-};
-
-const Panel = ({ title, children }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-    <h2 className="text-sm font-semibold text-gray-700 mb-4">{title}</h2>
-    {children}
-  </div>
-);
+const Panel = Card;
 
 const unitsLabel = (units = []) => units.map((u) => u.unit?.unitNumber).filter(Boolean).join(', ') || '—';
 
@@ -441,7 +414,7 @@ const DashboardPage = () => {
   useEffect(() => {
     statsService.getStats()
       .then(setStats)
-      .catch(() => {}) // Non-blocking — dashboard degrades gracefully
+      .catch(() => showError("Couldn't load dashboard data")) // Non-blocking — dashboard degrades gracefully
       .finally(() => setLoading(false));
   }, []);
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -12,6 +13,7 @@ import {
   User,
   LogOut,
   Layers,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -99,23 +101,37 @@ const BOTTOM_ITEMS = [
   },
 ];
 
-const SidebarLink = ({ item }) => (
+const SidebarGroupLabel = ({ children }) => (
+  <p className="px-3 mt-1 mb-1.5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+    {children}
+  </p>
+);
+
+const SidebarLink = ({ item, onNavigate }) => (
   <NavLink
     to={item.path}
+    onClick={onNavigate}
     className={({ isActive }) =>
-      `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+      `relative flex items-center gap-2.5 pl-3 pr-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ease-snappy ${
         isActive
-          ? 'bg-primary text-white'
-          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+          ? 'bg-primary-50 text-primary-700'
+          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
       }`
     }
   >
-    <item.icon size={18} />
-    {item.label}
+    {({ isActive }) => (
+      <>
+        {isActive && (
+          <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full bg-primary" aria-hidden="true" />
+        )}
+        <item.icon size={18} className={isActive ? 'text-primary' : 'text-gray-400'} />
+        {item.label}
+      </>
+    )}
   </NavLink>
 );
 
-const Sidebar = () => {
+const Sidebar = ({ mobileOpen = false, onMobileClose = () => {} }) => {
   const { user, logout } = useAuth();
   const role = user?.role;
 
@@ -127,79 +143,115 @@ const Sidebar = () => {
   const adminItems = NAV_ITEMS.filter((i) => i.group === 'admin' && visible(i));
   const bottomItems = BOTTOM_ITEMS.filter(visible);
 
+  // Close the mobile drawer on Escape and lock body scroll while it's open.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const handleKey = (e) => { if (e.key === 'Escape') onMobileClose(); };
+    document.addEventListener('keydown', handleKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = '';
+    };
+  }, [mobileOpen, onMobileClose]);
+
   return (
-    <aside className="w-60 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col h-full">
-      {/* Logo */}
-      <div className="px-4 py-5 border-b border-gray-200">
-        <div className="flex items-center gap-2">
-          {user?.companyLogoUrl ? (
-            <img
-              src={user.companyLogoUrl}
-              alt={`${user.companyName || 'Company'} logo`}
-              className="w-8 h-8 rounded-lg object-cover border border-gray-200 flex-shrink-0"
-            />
-          ) : (
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-              <Building2 size={18} className="text-white" />
-            </div>
-          )}
-          <span className="font-semibold text-gray-900 text-sm truncate min-w-0 flex-1" title={user?.companyName || 'Real Estate CRM'}>
-            {user?.companyName || 'Real Estate CRM'}
-          </span>
+    <>
+      {/* Mobile backdrop */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm animate-fade-in lg:hidden"
+          onClick={onMobileClose}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-snappy
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:static lg:z-auto lg:w-60 lg:translate-x-0 lg:transition-none
+          flex-shrink-0 bg-white border-r border-gray-200 flex flex-col h-full
+        `}
+      >
+        {/* Logo */}
+        <div className="px-4 py-4 border-b border-gray-200 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {user?.companyLogoUrl ? (
+              <img
+                src={user.companyLogoUrl}
+                alt={`${user.companyName || 'Company'} logo`}
+                className="w-8 h-8 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+                <Building2 size={18} className="text-white" />
+              </div>
+            )}
+            <span className="font-semibold text-gray-900 text-sm truncate min-w-0 flex-1" title={user?.companyName || 'Real Estate CRM'}>
+              {user?.companyName || 'Real Estate CRM'}
+            </span>
+          </div>
+          <button
+            onClick={onMobileClose}
+            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors lg:hidden"
+            aria-label="Close menu"
+          >
+            <X size={18} />
+          </button>
         </div>
-      </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-1">
-        {/* Dashboard */}
-        {visible(dashboardItem) && <SidebarLink item={dashboardItem} />}
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-1">
+          {/* Dashboard */}
+          {visible(dashboardItem) && <SidebarLink item={dashboardItem} onNavigate={onMobileClose} />}
 
-        {/* Inventory */}
-        {inventoryItems.length > 0 && (
-          <>
-            <div className="my-2 border-t border-gray-100" />
-            <p className="px-3 text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Inventory</p>
-            {inventoryItems.map((item) => (
-              <SidebarLink key={item.path} item={item} />
-            ))}
-          </>
-        )}
+          {/* Inventory */}
+          {inventoryItems.length > 0 && (
+            <>
+              <SidebarGroupLabel>Inventory</SidebarGroupLabel>
+              {inventoryItems.map((item) => (
+                <SidebarLink key={item.path} item={item} onNavigate={onMobileClose} />
+              ))}
+            </>
+          )}
 
-        {/* CRM Workflow */}
-        {crmItems.length > 0 && (
-          <>
-            <div className="my-2 border-t border-gray-100" />
-            {crmItems.map((item) => (
-              <SidebarLink key={item.path} item={item} />
-            ))}
-          </>
-        )}
+          {/* CRM Workflow */}
+          {crmItems.length > 0 && (
+            <>
+              <SidebarGroupLabel>CRM Workflow</SidebarGroupLabel>
+              {crmItems.map((item) => (
+                <SidebarLink key={item.path} item={item} onNavigate={onMobileClose} />
+              ))}
+            </>
+          )}
 
-        {/* Admin */}
-        {adminItems.length > 0 && (
-          <>
-            <div className="my-2 border-t border-gray-100" />
-            {adminItems.map((item) => (
-              <SidebarLink key={item.path} item={item} />
-            ))}
-          </>
-        )}
-      </nav>
+          {/* Admin */}
+          {adminItems.length > 0 && (
+            <>
+              <SidebarGroupLabel>Admin</SidebarGroupLabel>
+              {adminItems.map((item) => (
+                <SidebarLink key={item.path} item={item} onNavigate={onMobileClose} />
+              ))}
+            </>
+          )}
+        </nav>
 
-      {/* Bottom */}
-      <div className="px-3 py-4 border-t border-gray-200 flex flex-col gap-1">
-        {bottomItems.map((item) => (
-          <SidebarLink key={item.path} item={item} />
-        ))}
-        <button
-          onClick={logout}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors w-full text-left"
-        >
-          <LogOut size={18} />
-          Logout
-        </button>
-      </div>
-    </aside>
+        {/* Bottom */}
+        <div className="px-3 py-4 border-t border-gray-200 flex flex-col gap-1">
+          {bottomItems.map((item) => (
+            <SidebarLink key={item.path} item={item} onNavigate={onMobileClose} />
+          ))}
+          <button
+            onClick={logout}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors duration-150 ease-snappy w-full text-left"
+          >
+            <LogOut size={18} className="text-gray-400" />
+            Logout
+          </button>
+        </div>
+      </aside>
+    </>
   );
 };
 

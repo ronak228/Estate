@@ -3,6 +3,7 @@ import { AlertTriangle } from 'lucide-react';
 import unitService from '../../services/unitService';
 import Input from '../../components/shared/Input';
 import Button from '../../components/shared/Button';
+import { showSuccess } from '../../lib/toast';
 import { formatCurrency } from '../../utils/format';
 import { isPositiveInteger } from '../../utils/validation';
 import { calcAreaAndBasePrice } from '../../utils/unitCalc';
@@ -161,6 +162,7 @@ const BulkUnitForm = ({ projectId, existingUnitNumbers = [], onSuccess, onCancel
           pricePerSqFt: parseInt(row.pricePerSqFt, 10),
         })),
       });
+      showSuccess(`${rows.length} unit${rows.length === 1 ? '' : 's'} created successfully`);
       onSuccess();
     } catch (err) {
       setApiError(err.response?.data?.message || 'Failed to create units');

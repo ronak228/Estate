@@ -6,6 +6,8 @@ import PageHeader from '../../components/shared/PageHeader';
 import StatusBadge from '../../components/shared/StatusBadge';
 import Input from '../../components/shared/Input';
 import Button from '../../components/shared/Button';
+import Card from '../../components/shared/Card';
+import { showSuccess } from '../../lib/toast';
 import { formatDateTime } from '../../utils/format';
 
 const ProfilePage = () => {
@@ -19,14 +21,12 @@ const ProfilePage = () => {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setPasswordForm((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: '' }));
     setApiError('');
-    setSuccess('');
   };
 
   const validate = () => {
@@ -47,7 +47,7 @@ const ProfilePage = () => {
     setSaving(true);
     try {
       await authService.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
-      setSuccess('Password changed successfully');
+      showSuccess('Password changed successfully');
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (err) {
       setApiError(err.response?.data?.message || 'Failed to change password');
@@ -62,7 +62,7 @@ const ProfilePage = () => {
 
       <div className="max-w-2xl flex flex-col gap-5">
         {/* Profile Info */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <Card padding="p-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center text-xl font-semibold">
               {user?.fullName?.charAt(0).toUpperCase()}
@@ -86,11 +86,10 @@ const ProfilePage = () => {
               <p className="font-medium text-gray-800">{formatDateTime(user?.lastLoginAt)}</p>
             </div>
           </div>
-        </div>
+        </Card>
 
         {/* Change Password */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Change Password</h2>
+        <Card title="Change Password" padding="p-6">
           <form onSubmit={handlePasswordSubmit} noValidate>
             <div className="flex flex-col gap-4">
               <Input
@@ -127,11 +126,6 @@ const ProfilePage = () => {
                   {apiError}
                 </div>
               )}
-              {success && (
-                <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-                  {success}
-                </div>
-              )}
 
               <div className="flex justify-end">
                 <Button type="submit" loading={saving}>
@@ -140,7 +134,7 @@ const ProfilePage = () => {
               </div>
             </div>
           </form>
-        </div>
+        </Card>
       </div>
     </PageLayout>
   );

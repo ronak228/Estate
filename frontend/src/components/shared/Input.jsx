@@ -19,7 +19,7 @@ const Input = ({
       {label && (
         <label htmlFor={name} className="text-sm font-medium text-gray-700">
           {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
+          {required && <span className="text-red-400 ml-1">*</span>}
         </label>
       )}
       <input
@@ -31,7 +31,7 @@ const Input = ({
         placeholder={placeholder}
         disabled={disabled}
         className={`
-          w-full px-3 py-2 text-sm rounded-lg border transition-colors
+          w-full px-3 py-2 text-sm rounded-lg border transition-colors duration-150 ease-snappy
           focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
           disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed
           ${error ? 'border-red-400 bg-red-50' : 'border-gray-300 bg-white hover:border-gray-400'}

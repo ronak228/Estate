@@ -4,7 +4,7 @@
  */
 const PageLayout = ({ children }) => {
   return (
-    <div className="min-h-full bg-app p-6">
+    <div className="min-h-full bg-app p-4 sm:p-6">
       <div className="max-w-screen-xl mx-auto">{children}</div>
     </div>
   );

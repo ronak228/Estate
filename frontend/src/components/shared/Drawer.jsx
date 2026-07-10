@@ -39,9 +39,9 @@ const Drawer = ({ isOpen, onClose, title, children, side = 'right', width = 'md'
       {/* Panel */}
       <div
         className={`
-          absolute top-0 ${positionClass} h-full bg-white shadow-2xl
+          absolute top-0 ${positionClass} h-full bg-white shadow-dropdown
           flex flex-col ${widthClass}
-          transform transition-transform duration-300 ease-in-out ${translateClass}
+          transform transition-transform duration-300 ease-snappy ${translateClass}
         `}
         role="dialog"
         aria-modal="true"

@@ -10,8 +10,10 @@ import LoadingState from '../../components/shared/LoadingState';
 import ErrorState from '../../components/shared/ErrorState';
 import Modal from '../../components/shared/Modal';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
+import Card from '../../components/shared/Card';
 import SiteVisitForm from './SiteVisitForm';
 import QuotationForm from '../Quotation/QuotationForm';
+import { showSuccess, getErrorMessage } from '../../lib/toast';
 import { formatDateTime } from '../../utils/format';
 
 const SiteVisitDetailPage = () => {
@@ -57,10 +59,11 @@ const SiteVisitDetailPage = () => {
     setCompleteError('');
     try {
       await siteVisitService.completeSiteVisit(siteVisit.id);
+      showSuccess('Site visit marked as completed');
       setCompleteOpen(false);
       fetchSiteVisit();
     } catch (err) {
-      setCompleteError(err.response?.data?.message || 'Failed to complete site visit');
+      setCompleteError(getErrorMessage(err, 'Failed to complete site visit'));
     } finally {
       setCompleting(false);
     }
@@ -104,8 +107,7 @@ const SiteVisitDetailPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Visit Details */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Visit Details</h2>
+        <Card title="Visit Details">
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
             <div>
               <dt className="text-gray-500">Contact</dt>
@@ -161,14 +163,11 @@ const SiteVisitDetailPage = () => {
               </div>
             )}
           </dl>
-        </div>
+        </Card>
 
         {/* Interested Units — a customer may be interested in several units
             of the same property before deciding on one. */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">
-            Interested Units {siteVisit.units?.length > 0 && `(${siteVisit.units.length})`}
-          </h2>
+        <Card title={`Interested Units${siteVisit.units?.length > 0 ? ` (${siteVisit.units.length})` : ''}`}>
           {siteVisit.units?.length > 0 ? (
             <ul className="flex flex-col divide-y divide-gray-100">
               {siteVisit.units.map((unit) => (
@@ -191,7 +190,7 @@ const SiteVisitDetailPage = () => {
           ) : (
             <p className="text-sm text-gray-400">No units linked to this visit.</p>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* Edit / Reschedule Modal */}

@@ -11,6 +11,7 @@ import ErrorState from '../../components/shared/ErrorState';
 import Modal from '../../components/shared/Modal';
 import InteractionLog from '../../components/shared/InteractionLog';
 import InteractionForm from '../../components/shared/InteractionForm';
+import Card from '../../components/shared/Card';
 import ContactForm from './ContactForm';
 import { formatDate, formatCurrency } from '../../utils/format';
 
@@ -74,8 +75,7 @@ const ContactDetailPage = () => {
         <div className="lg:col-span-2 space-y-4">
 
           {/* Profile card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Profile</h2>
+          <Card title="Profile">
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <div>
                 <dt className="text-gray-500">Phone</dt>
@@ -100,11 +100,10 @@ const ContactDetailPage = () => {
                 </div>
               )}
             </dl>
-          </div>
+          </Card>
 
           {/* Budget card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Budget & Preferences</h2>
+          <Card title="Budget & Preferences">
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <div>
                 <dt className="text-gray-500">Budget Min</dt>
@@ -122,13 +121,10 @@ const ContactDetailPage = () => {
             {!contact.budgetMin && !contact.budgetMax && (
               <p className="text-xs text-gray-400 mt-2">No budget information recorded yet.</p>
             )}
-          </div>
+          </Card>
 
           {/* Inquiry history */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">
-              Inquiry History ({contact.inquiries?.length || 0})
-            </h2>
+          <Card title={`Inquiry History (${contact.inquiries?.length || 0})`}>
             {contact.inquiries?.length === 0 ? (
               <p className="text-sm text-gray-400">No inquiries linked yet.</p>
             ) : (
@@ -158,18 +154,17 @@ const ContactDetailPage = () => {
                 ))}
               </ul>
             )}
-          </div>
+          </Card>
         </div>
 
         {/* ── Right: Interaction log ── */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 h-fit">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Interaction Log</h2>
+        <Card title="Interaction Log" className="h-fit">
           <InteractionLog
             interactions={contact.interactions || []}
             onAdd={() => setInteractionOpen(true)}
             canAdd
           />
-        </div>
+        </Card>
       </div>
 
       {/* Edit Contact Modal */}

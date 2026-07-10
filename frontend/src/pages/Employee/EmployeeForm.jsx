@@ -3,6 +3,7 @@ import companyService from '../../services/companyService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
 import Select from '../../components/shared/Select';
+import { showSuccess } from '../../lib/toast';
 
 const ROLE_OPTIONS = [
   { value: 'MANAGER', label: 'Manager' },
@@ -81,6 +82,7 @@ const EmployeeForm = ({ employee, onSuccess, onCancel }) => {
           phone: form.phone.trim() || undefined,
         });
       }
+      showSuccess(isEdit ? 'Employee updated successfully' : 'Employee created successfully');
       onSuccess();
     } catch (err) {
       setApiError(err.response?.data?.message || 'Failed to save employee');

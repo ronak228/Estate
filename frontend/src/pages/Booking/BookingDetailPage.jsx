@@ -15,7 +15,10 @@ import Modal from '../../components/shared/Modal';
 import PaymentList from '../../components/shared/PaymentList';
 import PaymentForm from '../../components/shared/PaymentForm';
 import DocumentUploader from '../../components/shared/DocumentUploader';
+import Card from '../../components/shared/Card';
+import Textarea from '../../components/shared/Textarea';
 
+import { showSuccess, showError, getErrorMessage } from '../../lib/toast';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/format';
 import { getBookingFinancials, getPaymentHistory } from '../../utils/booking';
 
@@ -85,6 +88,7 @@ const BookingDetailPage = () => {
       URL.revokeObjectURL(url);
     } catch {
       setDownloadError('Failed to download receipt');
+      showError('Failed to download receipt');
     } finally {
       setDownloadingPdf(false);
     }
@@ -95,10 +99,11 @@ const BookingDetailPage = () => {
     setPaymentError('');
     try {
       await bookingService.addPayment(id, data);
+      showSuccess('Payment recorded');
       setPaymentOpen(false);
       fetchBooking(); // Refresh to show new payment
     } catch (err) {
-      setPaymentError(err.response?.data?.message || 'Failed to record payment');
+      setPaymentError(getErrorMessage(err, 'Failed to record payment'));
     } finally {
       setPaymentSubmitting(false);
     }
@@ -109,36 +114,49 @@ const BookingDetailPage = () => {
     setUploadError('');
     try {
       await bookingDocumentService.uploadDocument(id, file, type);
+      showSuccess('Document uploaded');
       fetchBooking();
     } catch (err) {
-      setUploadError(err.response?.data?.message || 'Upload failed');
+      setUploadError(getErrorMessage(err, 'Upload failed'));
     } finally {
       setUploading(false);
     }
   };
 
   const handleDeleteDocument = async (documentId) => {
-    await bookingDocumentService.deleteDocument(id, documentId);
-    fetchBooking();
+    try {
+      await bookingDocumentService.deleteDocument(id, documentId);
+      showSuccess('Document deleted');
+      fetchBooking();
+    } catch (err) {
+      showError(getErrorMessage(err, 'Failed to delete document'));
+    }
   };
 
   const handleDownloadDocument = async (doc) => {
-    const blob = await bookingDocumentService.downloadDocument(id, doc.id);
-    const url = window.URL.createObjectURL(blob);
-    window.open(url, '_blank', 'noopener,noreferrer');
-    // Revoke shortly after to allow the new tab to load the resource.
-    setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+    try {
+      const blob = await bookingDocumentService.downloadDocument(id, doc.id);
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      // Revoke shortly after to allow the new tab to load the resource.
+      setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      showError(getErrorMessage(err, 'Failed to download document'));
+    }
   };
 
   const handleRetryErpSync = async () => {
     setErpSyncing(true);
     setErpMessage('');
     try {
-      const result = await bookingService.retryErpSync(id);
+      await bookingService.retryErpSync(id);
       setErpMessage('ERP sync successful.');
+      showSuccess('ERP sync successful');
       fetchBooking();
     } catch (err) {
-      setErpMessage(err.response?.data?.message || 'ERP sync failed');
+      const message = getErrorMessage(err, 'ERP sync failed');
+      setErpMessage(message);
+      showError(message);
     } finally {
       setErpSyncing(false);
     }
@@ -149,11 +167,12 @@ const BookingDetailPage = () => {
     setCancelError('');
     try {
       await bookingService.cancelBooking(id, cancelReason);
+      showSuccess('Booking cancelled');
       setCancelOpen(false);
       setCancelReason('');
       fetchBooking();
     } catch (err) {
-      setCancelError(err.response?.data?.message || 'Failed to cancel booking');
+      setCancelError(getErrorMessage(err, 'Failed to cancel booking'));
     } finally {
       setCancelling(false);
     }
@@ -213,21 +232,19 @@ const BookingDetailPage = () => {
         <div className="lg:col-span-2 flex flex-col gap-6">
 
           {/* Payments section */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-700">Payment History</h2>
-              {isManager && (
-                <Button size="sm" icon={Plus} onClick={() => setPaymentOpen(true)}>
-                  Add Payment
-                </Button>
-              )}
-            </div>
+          <Card
+            title="Payment History"
+            actions={isManager && (
+              <Button size="sm" icon={Plus} onClick={() => setPaymentOpen(true)}>
+                Add Payment
+              </Button>
+            )}
+          >
             <PaymentList payments={paymentHistory} />
-          </div>
+          </Card>
 
           {/* Documents section */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Booking Documents</h2>
+          <Card title="Booking Documents">
             <DocumentUploader
               documents={documents}
               onUpload={handleUploadDocument}
@@ -237,19 +254,14 @@ const BookingDetailPage = () => {
               uploadError={uploadError}
               canDelete={isManager}
             />
-          </div>
+          </Card>
         </div>
 
         {/* ── Right column (1/3) ───────────────────────────────────────────── */}
         <div className="flex flex-col gap-4">
 
           {/* Booking status card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-gray-700">Booking Status</h2>
-              <StatusBadge value={booking.status} />
-            </div>
-
+          <Card title="Booking Status" actions={<StatusBadge value={booking.status} />}>
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <dt className="text-gray-500">Booked On</dt>
@@ -303,11 +315,10 @@ const BookingDetailPage = () => {
                 )}
               </div>
             )}
-          </div>
+          </Card>
 
           {/* Financial summary */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Financial Summary</h2>
+          <Card title="Financial Summary">
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <dt className="text-gray-500">Quoted Amount</dt>
@@ -348,11 +359,10 @@ const BookingDetailPage = () => {
                 </dd>
               </div>
             </dl>
-          </div>
+          </Card>
 
           {/* Customer & Property */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Customer & Property</h2>
+          <Card title="Customer & Property">
             <dl className="space-y-3 text-sm">
               <div>
                 <dt className="text-xs text-gray-400 mb-0.5">Customer</dt>
@@ -398,7 +408,7 @@ const BookingDetailPage = () => {
                 </dd>
               </div>
             </dl>
-          </div>
+          </Card>
 
           {/* Booking ID */}
           <div className="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3">
@@ -435,19 +445,14 @@ const BookingDetailPage = () => {
             Cancelling this booking will release the unit back to <strong>Available</strong> and
             revert the inquiry to the <strong>Negotiation</strong> stage. This cannot be undone.
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="cancelReason" className="text-sm font-medium text-gray-700">
-              Reason (optional)
-            </label>
-            <textarea
-              id="cancelReason"
-              value={cancelReason}
-              onChange={(e) => setCancelReason(e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="e.g. Customer withdrew"
-            />
-          </div>
+          <Textarea
+            label="Reason (optional)"
+            name="cancelReason"
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            rows={3}
+            placeholder="e.g. Customer withdrew"
+          />
           {cancelError && (
             <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
               {cancelError}

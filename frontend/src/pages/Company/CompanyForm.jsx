@@ -2,6 +2,7 @@ import { useState } from 'react';
 import companyService from '../../services/companyService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
+import { showSuccess } from '../../lib/toast';
 
 const INITIAL = {
   name: '',
@@ -65,6 +66,7 @@ const CompanyForm = ({ onSuccess, onCancel }) => {
           phone: form.adminPhone.trim() || undefined,
         },
       });
+      showSuccess('Company created successfully');
       onSuccess();
     } catch (err) {
       setApiError(err.response?.data?.message || 'Failed to create company');

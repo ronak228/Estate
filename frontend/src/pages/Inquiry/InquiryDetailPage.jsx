@@ -14,7 +14,9 @@ import Select from '../../components/shared/Select';
 import FollowUpList from '../../components/shared/FollowUpList';
 import ActivityTimeline from '../../components/shared/ActivityTimeline';
 import AssignDropdown from '../../components/shared/AssignDropdown';
+import Card from '../../components/shared/Card';
 import InquiryForm from './InquiryForm';
+import { showSuccess, showError, getErrorMessage } from '../../lib/toast';
 import { formatDateTime } from '../../utils/format';
 
 const STAGE_OPTIONS = [
@@ -78,28 +80,52 @@ const InquiryDetailPage = () => {
     try {
       const updated = await inquiryService.changeStage(id, stage);
       setInquiry((prev) => ({ ...prev, ...updated, followUps: prev.followUps, activities: prev.activities }));
+      showSuccess('Stage updated');
       // Refresh to get updated activities
       fetchInquiry();
     } catch (err) {
-      setStageChangeError(err.response?.data?.message || 'Failed to update stage');
+      const message = getErrorMessage(err, 'Failed to update stage');
+      setStageChangeError(message);
+      showError(message);
     } finally {
       setStageChanging(false);
     }
   };
 
+  // These three are awaited inside child components (AssignDropdown /
+  // FollowUpList) that already have their own inline error handling on
+  // rejection — re-throw after toasting so that handling still runs.
   const handleAssign = async (assignedToId) => {
-    await inquiryService.assignInquiry(id, assignedToId);
-    fetchInquiry();
+    try {
+      await inquiryService.assignInquiry(id, assignedToId);
+      showSuccess('Inquiry reassigned');
+      fetchInquiry();
+    } catch (err) {
+      showError(getErrorMessage(err, 'Failed to reassign inquiry'));
+      throw err;
+    }
   };
 
   const handleScheduleFollowUp = async (data) => {
-    await inquiryService.createFollowUp(id, data);
-    fetchInquiry();
+    try {
+      await inquiryService.createFollowUp(id, data);
+      showSuccess('Follow-up scheduled');
+      fetchInquiry();
+    } catch (err) {
+      showError(getErrorMessage(err, 'Failed to schedule follow-up'));
+      throw err;
+    }
   };
 
   const handleCompleteFollowUp = async (followUpId, data) => {
-    await inquiryService.updateFollowUp(id, followUpId, data);
-    fetchInquiry();
+    try {
+      await inquiryService.updateFollowUp(id, followUpId, data);
+      showSuccess('Follow-up updated');
+      fetchInquiry();
+    } catch (err) {
+      showError(getErrorMessage(err, 'Failed to update follow-up'));
+      throw err;
+    }
   };
 
   if (loading) return <PageLayout><LoadingState label="Loading inquiry..." /></PageLayout>;
@@ -129,8 +155,7 @@ const InquiryDetailPage = () => {
         <div className="lg:col-span-2 space-y-4">
 
           {/* Details card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Inquiry Details</h2>
+          <Card title="Inquiry Details">
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
               <div>
                 <dt className="text-gray-500">Contact</dt>
@@ -175,11 +200,10 @@ const InquiryDetailPage = () => {
                 </div>
               )}
             </dl>
-          </div>
+          </Card>
 
           {/* Stage & Assign controls */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Controls</h2>
+          <Card title="Controls">
             <div className="flex flex-wrap gap-3 items-center">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-500">Stage:</span>
@@ -209,24 +233,23 @@ const InquiryDetailPage = () => {
                 </div>
               )}
             </div>
-          </div>
+          </Card>
 
           {/* Follow-ups */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+          <Card>
             <FollowUpList
               followUps={inquiry.followUps || []}
               onSchedule={handleScheduleFollowUp}
               onComplete={handleCompleteFollowUp}
               canEdit={true}
             />
-          </div>
+          </Card>
         </div>
 
         {/* ── Right column: activity timeline ── */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 h-fit">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">Activity Timeline</h2>
+        <Card title="Activity Timeline" className="h-fit">
           <ActivityTimeline activities={inquiry.activities || []} />
-        </div>
+        </Card>
       </div>
 
       {/* Edit Modal */}

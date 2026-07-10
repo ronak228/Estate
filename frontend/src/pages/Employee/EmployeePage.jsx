@@ -15,6 +15,7 @@ import ConfirmDialog from '../../components/shared/ConfirmDialog';
 import ErrorState from '../../components/shared/ErrorState';
 import EmployeeForm from './EmployeeForm';
 import ResetPasswordForm from './ResetPasswordForm';
+import { showSuccess } from '../../lib/toast';
 import { formatDate } from '../../utils/format';
 
 const EmployeePage = () => {
@@ -66,7 +67,9 @@ const EmployeePage = () => {
     setDeactivateLoading(true);
     setDeactivateError('');
     try {
-      await companyService.updateEmployeeStatus(deactivateTarget.id, !deactivateTarget.isActive);
+      const nowActive = !deactivateTarget.isActive;
+      await companyService.updateEmployeeStatus(deactivateTarget.id, nowActive);
+      showSuccess(nowActive ? 'Employee activated' : 'Employee deactivated');
       setDeactivateTarget(null);
       fetchEmployees();
     } catch (err) {

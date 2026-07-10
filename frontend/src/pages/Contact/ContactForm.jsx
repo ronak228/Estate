@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import contactService from '../../services/contactService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
+import { showSuccess } from '../../lib/toast';
 
 /**
  * ContactForm — edit contact details (budget, preferences, personal info).
@@ -75,6 +76,7 @@ const ContactForm = ({ contact, onSuccess, onCancel }) => {
         budgetMax: form.budgetMax ? Number(form.budgetMax) : undefined,
         preferredArea: form.preferredArea.trim() || undefined,
       });
+      showSuccess('Contact updated successfully');
       onSuccess();
     } catch (err) {
       setApiError(err.response?.data?.message || 'Failed to update contact');
