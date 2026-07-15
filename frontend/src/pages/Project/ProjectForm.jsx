@@ -3,6 +3,7 @@ import projectService from '../../services/projectService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
 import Select from '../../components/shared/Select';
+import FormError from '../../components/shared/FormError';
 import { showSuccess } from '../../lib/toast';
 
 const STATUS_OPTIONS = [
@@ -117,11 +118,7 @@ const ProjectForm = ({ project, onSuccess, onCancel }) => {
         placeholder="Select status..."
       />
 
-      {apiError && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          {apiError}
-        </div>
-      )}
+      <FormError message={apiError} />
     </FormLayout>
   );
 };

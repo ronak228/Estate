@@ -14,7 +14,7 @@ const App = () => {
           closeButton
           toastOptions={{
             classNames: {
-              toast: '!rounded-xl !shadow-lg !border !border-gray-200 !font-sans',
+              toast: '!rounded-xl !shadow-dropdown !border !border-gray-200 !font-sans',
               title: '!text-sm !font-medium',
               description: '!text-xs',
             },

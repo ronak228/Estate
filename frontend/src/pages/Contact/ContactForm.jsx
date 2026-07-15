@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import contactService from '../../services/contactService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
+import FormError from '../../components/shared/FormError';
 import { showSuccess } from '../../lib/toast';
+import { getCurrencySymbol } from '../../utils/format';
 
 /**
  * ContactForm — edit contact details (budget, preferences, personal info).
@@ -144,7 +146,7 @@ const ContactForm = ({ contact, onSuccess, onCancel }) => {
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-            label="Budget Min (₹)"
+            label={`Budget Min (${getCurrencySymbol()})`}
             name="budgetMin"
             type="number"
             value={form.budgetMin}
@@ -153,7 +155,7 @@ const ContactForm = ({ contact, onSuccess, onCancel }) => {
             error={errors.budgetMin}
           />
           <Input
-            label="Budget Max (₹)"
+            label={`Budget Max (${getCurrencySymbol()})`}
             name="budgetMax"
             type="number"
             value={form.budgetMax}
@@ -172,11 +174,7 @@ const ContactForm = ({ contact, onSuccess, onCancel }) => {
         </div>
       </div>
 
-      {apiError && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          {apiError}
-        </div>
-      )}
+      <FormError message={apiError} />
     </FormLayout>
   );
 };

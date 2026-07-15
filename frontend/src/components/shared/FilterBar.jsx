@@ -1,3 +1,5 @@
+import Button from './Button';
+
 /**
  * FilterBar — horizontal row of filter controls above a DataTable.
  * Supports 'select' and 'date' filter types.
@@ -46,12 +48,9 @@ const FilterBar = ({ filters = [], values = {}, onChange }) => {
       })}
 
       {Object.values(values).some(Boolean) && (
-        <button
-          onClick={() => onChange({})}
-          className="text-xs text-gray-500 hover:text-gray-700 underline transition-colors duration-150 ease-snappy"
-        >
+        <Button variant="link" size="sm" onClick={() => onChange({})} className="!text-gray-500 hover:!text-gray-700">
           Clear filters
-        </button>
+        </Button>
       )}
     </div>
   );

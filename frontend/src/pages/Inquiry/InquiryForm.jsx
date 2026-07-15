@@ -4,6 +4,7 @@ import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
 import Select from '../../components/shared/Select';
 import Textarea from '../../components/shared/Textarea';
+import FormError from '../../components/shared/FormError';
 import { showSuccess } from '../../lib/toast';
 
 const SOURCE_OPTIONS = [
@@ -162,32 +163,35 @@ const InquiryForm = ({ inquiry, onSuccess, onCancel }) => {
           <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
             If this phone number already exists in your contacts, it will be reused automatically.
           </p>
-          <Input
-            label="Full Name"
-            name="fullName"
-            value={form.fullName}
-            onChange={handleChange}
-            required
-            error={errors.fullName}
-            placeholder="e.g. Rahul Sharma"
-          />
-          <Input
-            label="Phone"
-            name="phone"
-            value={form.phone}
-            onChange={handleChange}
-            required
-            error={errors.phone}
-            placeholder="+91 98765 43210"
-          />
-          <Input
-            label="Email (optional)"
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={handleChange}
-            placeholder="rahul@example.com"
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Full Name"
+              name="fullName"
+              value={form.fullName}
+              onChange={handleChange}
+              required
+              error={errors.fullName}
+              placeholder="e.g. Rahul Sharma"
+            />
+            <Input
+              label="Phone"
+              name="phone"
+              value={form.phone}
+              onChange={handleChange}
+              required
+              error={errors.phone}
+              placeholder="+91 98765 43210"
+            />
+            <Input
+              label="Email (optional)"
+              name="email"
+              type="email"
+              value={form.email}
+              onChange={handleChange}
+              placeholder="rahul@example.com"
+              className="sm:col-span-2"
+            />
+          </div>
         </>
       )}
 
@@ -247,11 +251,7 @@ const InquiryForm = ({ inquiry, onSuccess, onCancel }) => {
         placeholder="Any additional information..."
       />
 
-      {apiError && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          {apiError}
-        </div>
-      )}
+      <FormError message={apiError} />
     </FormLayout>
   );
 };

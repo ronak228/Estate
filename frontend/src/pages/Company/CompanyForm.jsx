@@ -2,6 +2,7 @@ import { useState } from 'react';
 import companyService from '../../services/companyService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
+import FormError from '../../components/shared/FormError';
 import { showSuccess } from '../../lib/toast';
 
 const INITIAL = {
@@ -90,7 +91,7 @@ const CompanyForm = ({ onSuccess, onCancel }) => {
             name="timezone"
             value={form.timezone}
             onChange={handleChange}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white transition-colors duration-150 ease-snappy hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           >
             <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
             <option value="Asia/Dubai">Asia/Dubai (GST)</option>
@@ -103,7 +104,7 @@ const CompanyForm = ({ onSuccess, onCancel }) => {
             name="currency"
             value={form.currency}
             onChange={handleChange}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white transition-colors duration-150 ease-snappy hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           >
             <option value="INR">INR — Indian Rupee</option>
             <option value="AED">AED — UAE Dirham</option>
@@ -122,11 +123,7 @@ const CompanyForm = ({ onSuccess, onCancel }) => {
         </div>
       </div>
 
-      {apiError && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          {apiError}
-        </div>
-      )}
+      <FormError message={apiError} />
     </FormLayout>
   );
 };

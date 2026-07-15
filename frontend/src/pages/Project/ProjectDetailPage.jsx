@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Layers, Building2, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, Layers, Building2, Pencil, Tag } from 'lucide-react';
 import projectService from '../../services/projectService';
 import unitService from '../../services/unitService';
 import { useAuth } from '../../context/AuthContext';
@@ -13,11 +13,12 @@ import Modal from '../../components/shared/Modal';
 import ErrorState from '../../components/shared/ErrorState';
 import LoadingState from '../../components/shared/LoadingState';
 import Card from '../../components/shared/Card';
+import EmptyState from '../../components/shared/EmptyState';
 import ProjectForm from './ProjectForm';
 import UnitForm from '../Unit/UnitForm';
 import BulkUnitForm from '../Unit/BulkUnitForm';
 import { showSuccess, getErrorMessage } from '../../lib/toast';
-import { formatCurrency, formatDate } from '../../utils/format';
+import { formatCurrency, formatDate, getCurrencySymbol } from '../../utils/format';
 
 const MANAGERS = ['ADMIN', 'MANAGER'];
 
@@ -109,8 +110,8 @@ const ProjectDetailPage = () => {
     },
     {
       key: 'pricePerSqFt',
-      label: '₹/sq. ft.',
-      render: (val) => val != null ? `₹${Number(val).toLocaleString('en-IN')}` : '—',
+      label: `${getCurrencySymbol()}/sq. ft.`,
+      render: (val) => val != null ? `${getCurrencySymbol()}${Number(val).toLocaleString('en-IN')}` : '—',
     },
     {
       key: 'basePrice',
@@ -133,27 +134,33 @@ const ProjectDetailPage = () => {
             key: 'id',
             label: 'Actions',
             render: (_, row) => (
-              <div className="flex items-center gap-2">
-                <button
+              <div className="flex items-center justify-end gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  icon={Pencil}
+                  title="Edit unit"
+                  aria-label={`Edit Unit ${row.unitNumber}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     setEditUnit(row);
                   }}
-                  className="text-xs text-indigo-600 hover:underline"
-                >
-                  Edit
-                </button>
-                <button
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  icon={Tag}
+                  title="Change status"
+                  aria-label={`Change status for Unit ${row.unitNumber}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     setStatusChangeError('');
                     setStatusUnit(row);
                     setStatusValue(row.status);
                   }}
-                  className="text-xs text-gray-500 hover:underline"
-                >
-                  Status
-                </button>
+                />
               </div>
             ),
           },
@@ -181,21 +188,14 @@ const ProjectDetailPage = () => {
 
   return (
     <PageLayout>
-      {/* Back + Header */}
-      <div className="mb-2">
-        <button
-          onClick={() => navigate('/projects')}
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
-        >
-          <ArrowLeft size={16} /> Back to Projects
-        </button>
-      </div>
-
       <PageHeader
         title={project.name}
         subtitle={project.location || 'No location set'}
         actions={
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" icon={ArrowLeft} onClick={() => navigate('/projects')}>
+              Back
+            </Button>
             {canManage && (
               <>
                 <Button variant="outline" icon={Pencil} size="sm" onClick={() => setEditOpen(true)}>
@@ -214,44 +214,51 @@ const ProjectDetailPage = () => {
       />
 
       {/* Project Info + Unit Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <Card padding="p-4">
-          <p className="text-xs text-gray-500 mb-1">Status</p>
-          <StatusBadge value={project.status} />
-        </Card>
-        <Card padding="p-4">
-          <p className="text-xs text-gray-500 mb-1">Total Units</p>
-          <p className="text-lg font-semibold text-gray-900">{unitSummary?.total ?? 0}</p>
-        </Card>
-        <Card padding="p-4">
-          <p className="text-xs text-gray-500 mb-1">Available</p>
-          <p className="text-lg font-semibold text-emerald-600">{unitSummary?.available ?? 0}</p>
-        </Card>
-        <Card padding="p-4">
-          <p className="text-xs text-gray-500 mb-1">Reserved / Sold</p>
-          <p className="text-lg font-semibold text-gray-700">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Status</p>
+          <div className="mt-1.5"><StatusBadge value={project.status} /></div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Total Units</p>
+          <p className="text-lg font-bold text-gray-900 mt-1.5 tabular-nums">{unitSummary?.total ?? 0}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Available</p>
+          <p className="text-lg font-bold text-success mt-1.5 tabular-nums">{unitSummary?.available ?? 0}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Reserved / Sold</p>
+          <p className="text-lg font-bold text-gray-700 mt-1.5 tabular-nums">
             {(unitSummary?.reserved ?? 0)} / {(unitSummary?.sold ?? 0)}
           </p>
-        </Card>
+        </div>
       </div>
 
       {/* Units Table */}
-      <div>
-        <h2 className="text-base font-semibold text-gray-800 mb-3">Units</h2>
+      <Card
+        title={
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-primary-50 text-primary flex items-center justify-center flex-shrink-0">
+              <Building2 size={17} />
+            </div>
+            <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Units</h2>
+          </div>
+        }
+      >
         <DataTable
           columns={unitColumns}
           rows={project.units || []}
           loading={false}
           emptyState={
-            <div className="flex flex-col items-center py-16">
-              <Building2 size={32} className="text-gray-300 mb-3" />
-              <p className="text-sm text-gray-500">
-                No units yet.{canManage ? ' Click "Add Unit" to add the first one.' : ''}
-              </p>
-            </div>
+            <EmptyState
+              compact
+              icon={Building2}
+              message={`No units yet.${canManage ? ' Click "Add Unit" to add the first one.' : ''}`}
+            />
           }
         />
-      </div>
+      </Card>
 
       {/* Edit Project Modal */}
       <Modal
@@ -330,7 +337,7 @@ const ProjectDetailPage = () => {
               <select
                 value={statusValue}
                 onChange={(e) => setStatusValue(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white hover:border-gray-400 transition-colors duration-150 ease-snappy focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="AVAILABLE">Available</option>
                 <option value="SOLD">Sold</option>

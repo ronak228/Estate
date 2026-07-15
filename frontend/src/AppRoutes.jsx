@@ -9,8 +9,10 @@ import ForbiddenPage from './pages/Auth/ForbiddenPage';
 // App pages
 import DashboardPage from './pages/Dashboard/DashboardPage';
 import CompanyListPage from './pages/Company/CompanyListPage';
+import CompanyDetailPage from './pages/Company/CompanyDetailPage';
 import CompanySettingsPage from './pages/Company/CompanySettingsPage';
 import EmployeePage from './pages/Employee/EmployeePage';
+import EmployeeDetailPage from './pages/Employee/EmployeeDetailPage';
 import ProfilePage from './pages/Profile/ProfilePage';
 
 // Module 1 — Inquiry Management
@@ -66,6 +68,14 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/companies/:id"
+          element={
+            <ProtectedRoute roles={['SUPER_ADMIN']}>
+              <CompanyDetailPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* ADMIN, MANAGER */}
         <Route
@@ -73,6 +83,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute roles={['ADMIN', 'MANAGER']}>
               <EmployeePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/employees/:id"
+          element={
+            <ProtectedRoute roles={['ADMIN', 'MANAGER']}>
+              <EmployeeDetailPage />
             </ProtectedRoute>
           }
         />

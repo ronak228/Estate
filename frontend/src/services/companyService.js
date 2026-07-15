@@ -54,6 +54,11 @@ const companyService = {
     return res.data.data;
   },
 
+  getEmployee: async (id) => {
+    const res = await api.get(`/companies/me/employees/${id}`);
+    return res.data.data.employee;
+  },
+
   updateEmployee: async (id, data) => {
     const res = await api.put(`/companies/me/employees/${id}`, data);
     return res.data.data.user;

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api, { setAuthToken } from '../utils/axios';
+import { setCurrentCurrency, setCurrentTimezone } from '../utils/format';
 
 const AuthContext = createContext(null);
 
@@ -67,6 +68,13 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     document.title = user?.companyName ? `${user.companyName} — Real Estate CRM` : 'Real Estate CRM';
   }, [user?.companyName]);
+
+  // Company Settings' currency/timezone drive every formatCurrency/formatDate
+  // call in the app (see utils/format.js) — not just cosmetic display fields.
+  useEffect(() => {
+    setCurrentCurrency(user?.companyCurrency);
+    setCurrentTimezone(user?.companyTimezone);
+  }, [user?.companyCurrency, user?.companyTimezone]);
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, logout, updateUser }}>

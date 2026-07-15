@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import unitService from '../../services/unitService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
+import FormError from '../../components/shared/FormError';
 import { showSuccess } from '../../lib/toast';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, getCurrencySymbol } from '../../utils/format';
 import { isPositiveInteger } from '../../utils/validation';
 import { calcAreaAndBasePrice } from '../../utils/unitCalc';
 
@@ -122,7 +123,7 @@ const UnitForm = ({ unit, projectId, onSuccess, onCancel }) => {
       />
 
       {/* Floor & Type (optional) */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
           label="Floor (optional)"
           name="floor"
@@ -143,7 +144,7 @@ const UnitForm = ({ unit, projectId, onSuccess, onCancel }) => {
       </div>
 
       {/* Dimensions */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
           label="Width (ft)"
           name="width"
@@ -172,7 +173,7 @@ const UnitForm = ({ unit, projectId, onSuccess, onCancel }) => {
 
       {/* Price per sq ft */}
       <Input
-        label="Price per Sq. Ft. (₹)"
+        label={`Price per Sq. Ft. (${getCurrencySymbol()})`}
         name="pricePerSqFt"
         type="number"
         value={form.pricePerSqFt}
@@ -206,11 +207,7 @@ const UnitForm = ({ unit, projectId, onSuccess, onCancel }) => {
         <p className="text-xs text-gray-400">Base Price is read-only — calculated by the server on save.</p>
       </div>
 
-      {apiError && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          {apiError}
-        </div>
-      )}
+      <FormError message={apiError} />
     </FormLayout>
   );
 };

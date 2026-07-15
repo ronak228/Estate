@@ -8,6 +8,8 @@ import Input from '../../components/shared/Input';
 import Select from '../../components/shared/Select';
 import UnitAvailabilityList from '../../components/shared/UnitAvailabilityList';
 import ChargeLineEditor from '../../components/shared/ChargeLineEditor';
+import FormError from '../../components/shared/FormError';
+import Button from '../../components/shared/Button';
 import { showSuccess } from '../../lib/toast';
 import { isNonNegativeInteger } from '../../utils/validation';
 
@@ -189,13 +191,9 @@ const QuotationForm = ({ defaultInquiryId, onSuccess, onCancel }) => {
                 <span className="font-medium text-primary">
                   Selected: Unit {selectedUnit.unitNumber} — {selectedUnit.project?.name}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedUnit(null)}
-                  className="text-xs text-gray-500 hover:text-gray-700 underline"
-                >
+                <Button variant="link" size="sm" onClick={() => setSelectedUnit(null)}>
                   Clear
-                </button>
+                </Button>
               </div>
             )}
 
@@ -248,11 +246,7 @@ const QuotationForm = ({ defaultInquiryId, onSuccess, onCancel }) => {
         )}
       </div>
 
-      {apiError && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          {apiError}
-        </div>
-      )}
+      <FormError message={apiError} />
     </FormLayout>
   );
 };

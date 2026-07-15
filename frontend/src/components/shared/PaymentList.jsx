@@ -1,13 +1,18 @@
-import { CreditCard } from 'lucide-react';
+import { Download } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import EmptyState from './EmptyState';
+import Button from './Button';
 import { formatCurrency, formatDate } from '../../utils/format';
 
 /**
  * PaymentList — table of a booking's full payment history: the token/booking
  * amount (flagged via `isToken`) plus every BookingPayment recorded after.
+ *
+ * Props:
+ *   payments   — merged token + BookingPayment rows (see utils/booking.js)
+ *   onDownload — optional (payment) => void, shows a per-row receipt download button
  */
-const PaymentList = ({ payments = [] }) => {
+const PaymentList = ({ payments = [], onDownload }) => {
   if (payments.length === 0) {
     return <EmptyState message="No payments recorded yet" />;
   }
@@ -35,6 +40,7 @@ const PaymentList = ({ payments = [] }) => {
               <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Amount
               </th>
+              {onDownload && <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Receipt</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -61,6 +67,19 @@ const PaymentList = ({ payments = [] }) => {
                 <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right whitespace-nowrap">
                   {formatCurrency(payment.amount)}
                 </td>
+                {onDownload && (
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      iconOnly
+                      icon={Download}
+                      onClick={() => onDownload(payment)}
+                      title="Download receipt"
+                      aria-label={`Download receipt for payment of ${formatCurrency(payment.amount)}`}
+                    />
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -72,6 +91,7 @@ const PaymentList = ({ payments = [] }) => {
               <td className="px-4 py-3 text-sm font-bold text-primary text-right">
                 {formatCurrency(totalPaid)}
               </td>
+              {onDownload && <td className="px-4 py-3" />}
             </tr>
           </tfoot>
         </table>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Building2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Building2, Ban, CheckCircle } from 'lucide-react';
 import companyService from '../../services/companyService';
 import PageLayout from '../../components/shared/PageLayout';
 import PageHeader from '../../components/shared/PageHeader';
@@ -12,6 +13,7 @@ import Button from '../../components/shared/Button';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
 import Modal from '../../components/shared/Modal';
 import ErrorState from '../../components/shared/ErrorState';
+import EmptyState from '../../components/shared/EmptyState';
 import CompanyForm from './CompanyForm';
 import { showSuccess } from '../../lib/toast';
 import { formatDate } from '../../utils/format';
@@ -30,6 +32,7 @@ const COLUMNS = [
 ];
 
 const CompanyListPage = () => {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -91,8 +94,9 @@ const CompanyListPage = () => {
       label: 'Actions',
       render: (_, row) => (
         <Button
-          variant={row.status === 'ACTIVE' ? 'outline' : 'ghost'}
+          variant={row.status === 'ACTIVE' ? 'dangerOutline' : 'successOutline'}
           size="sm"
+          icon={row.status === 'ACTIVE' ? Ban : CheckCircle}
           onClick={(e) => { e.stopPropagation(); setSuspendError(''); setSuspendTarget(row); }}
         >
           {row.status === 'ACTIVE' ? 'Suspend' : 'Reactivate'}
@@ -107,9 +111,14 @@ const CompanyListPage = () => {
         title="Companies"
         subtitle="Manage all tenant companies on the platform"
         actions={
-          <Button icon={Plus} onClick={() => setCreateOpen(true)}>
-            New Company
-          </Button>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-2.5 py-1">
+              {total} total
+            </span>
+            <Button icon={Plus} onClick={() => setCreateOpen(true)}>
+              New Company
+            </Button>
+          </div>
         }
       />
 
@@ -140,11 +149,9 @@ const CompanyListPage = () => {
             columns={columnsWithActions}
             rows={items}
             loading={loading}
+            onRowClick={(row) => navigate(`/companies/${row.id}`)}
             emptyState={
-              <div className="flex flex-col items-center py-16">
-                <Building2 size={32} className="text-gray-300 mb-3" />
-                <p className="text-sm text-gray-500">No companies yet. Create the first one.</p>
-              </div>
+              <EmptyState icon={Building2} message="No companies yet. Create the first one." />
             }
           />
           <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />

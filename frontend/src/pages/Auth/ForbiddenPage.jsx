@@ -14,7 +14,7 @@ const ForbiddenPage = () => {
         </p>
         <Link
           to="/dashboard"
-          className="text-sm text-primary font-medium hover:underline"
+          className="text-sm text-primary font-medium hover:text-primary-600 hover:underline transition-colors duration-150 ease-snappy"
         >
           Back to Dashboard
         </Link>

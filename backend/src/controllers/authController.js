@@ -17,7 +17,7 @@ const login = async (req, res, next) => {
 
     const user = await db.user.findUnique({
       where: { email: email.toLowerCase().trim() },
-      include: { company: { select: { id: true, name: true, status: true, logoUrl: true } } },
+      include: { company: { select: { id: true, name: true, status: true, logoUrl: true, currency: true, timezone: true } } },
     });
 
     // Generic message — never reveal which part was wrong
@@ -62,6 +62,8 @@ const login = async (req, res, next) => {
         companyId: user.companyId,
         companyName: user.company?.name ?? null,
         companyLogoUrl: user.company?.logoUrl ?? null,
+        companyCurrency: user.company?.currency ?? 'INR',
+        companyTimezone: user.company?.timezone ?? 'Asia/Kolkata',
       },
     });
   } catch (err) {
@@ -88,7 +90,7 @@ const getMe = async (req, res, next) => {
         lastLoginAt: true,
         createdAt: true,
         company: {
-          select: { name: true, logoUrl: true },
+          select: { name: true, logoUrl: true, currency: true, timezone: true },
         },
       },
     });
@@ -98,11 +100,18 @@ const getMe = async (req, res, next) => {
     }
 
     // Flattened to the same shape POST /auth/login returns (companyName,
-    // companyLogoUrl) — session rehydration on refresh must match the
-    // just-logged-in shape, or the sidebar/topbar branding disappears on reload.
+    // companyLogoUrl, companyCurrency, companyTimezone) — session rehydration
+    // on refresh must match the just-logged-in shape, or the sidebar/topbar
+    // branding and currency/timezone formatting revert on reload.
     const { company, ...rest } = user;
     return sendSuccess(res, 'User retrieved', {
-      user: { ...rest, companyName: company?.name ?? null, companyLogoUrl: company?.logoUrl ?? null },
+      user: {
+        ...rest,
+        companyName: company?.name ?? null,
+        companyLogoUrl: company?.logoUrl ?? null,
+        companyCurrency: company?.currency ?? 'INR',
+        companyTimezone: company?.timezone ?? 'Asia/Kolkata',
+      },
     });
   } catch (err) {
     next(err);

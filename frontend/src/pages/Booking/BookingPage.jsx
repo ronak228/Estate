@@ -117,6 +117,11 @@ const BookingPage = () => {
       <PageHeader
         title="Bookings"
         subtitle="All confirmed property bookings across the CRM"
+        actions={
+          <span className="inline-flex items-center text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-2.5 py-1">
+            {total} total
+          </span>
+        }
       />
 
       <div className="flex flex-wrap gap-3 mb-4 items-center justify-between">

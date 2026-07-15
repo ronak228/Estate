@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell,
@@ -9,10 +9,12 @@ import PageLayout from '../../components/shared/PageLayout';
 import PageHeader from '../../components/shared/PageHeader';
 import DataTable from '../../components/shared/DataTable';
 import LoadingState from '../../components/shared/LoadingState';
+import EmptyState from '../../components/shared/EmptyState';
+import ErrorState from '../../components/shared/ErrorState';
 import Card from '../../components/shared/Card';
 import StatCard from '../../components/shared/StatCard';
 import { showError } from '../../lib/toast';
-import { formatCurrency, formatDate, formatDateTime } from '../../utils/format';
+import { formatCurrency, formatDate, formatDateTime, getCurrencySymbol } from '../../utils/format';
 import {
   Building2, Users, PhoneCall, CalendarCheck, FileText,
   Wallet, TrendingUp, Home, AlertTriangle, ListChecks, Trophy, Moon,
@@ -104,14 +106,14 @@ const PlatformDashboard = ({ stats }) => (
             { key: 'updatedAt', label: 'Since', render: (v) => formatDate(v) },
           ]}
           rows={stats.suspendedCompanies}
-          emptyState={<p className="text-sm text-gray-400 py-6 text-center">No suspended companies</p>}
+          emptyState={<EmptyState compact message="No suspended companies" />}
         />
       </Panel>
       <Panel title="Dormant Companies">
         <DataTable
           columns={[{ key: 'name', label: 'Company' }]}
           rows={stats.dormantCompanies}
-          emptyState={<p className="text-sm text-gray-400 py-6 text-center">Everyone's logging in</p>}
+          emptyState={<EmptyState compact message="Everyone's logging in" />}
         />
       </Panel>
       <Panel title="Most Active Companies">
@@ -121,7 +123,7 @@ const PlatformDashboard = ({ stats }) => (
             { key: 'activityScore', label: 'Activity (30d)', render: (v) => <span className="font-medium">{v}</span> },
           ]}
           rows={stats.mostActiveCompanies}
-          emptyState={<p className="text-sm text-gray-400 py-6 text-center">No activity in the last 30 days</p>}
+          emptyState={<EmptyState compact message="No activity in the last 30 days" />}
         />
       </Panel>
     </div>
@@ -182,7 +184,7 @@ const CompanyDashboard = ({ stats }) => {
                   axisLine={false}
                   tickLine={false}
                   width={48}
-                  tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`}
+                  tickFormatter={(v) => `${getCurrencySymbol()}${(v / 100000).toFixed(0)}L`}
                 />
                 <Tooltip {...TOOLTIP_STYLE} formatter={(v) => [formatCurrency(v), 'Revenue']} />
                 <Bar dataKey="revenue" fill={CHART.primary} radius={[4, 4, 0, 0]} maxBarSize={22} />
@@ -244,7 +246,7 @@ const CompanyDashboard = ({ stats }) => {
                     tick={{ fontSize: 12, fill: CHART.axisTick }}
                     axisLine={{ stroke: CHART.axisLine }}
                     tickLine={false}
-                    tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`}
+                    tickFormatter={(v) => `${getCurrencySymbol()}${(v / 100000).toFixed(0)}L`}
                   />
                   <YAxis type="category" dataKey="project" width={130} tick={{ fontSize: 12, fill: CHART.categoryTick }} axisLine={false} tickLine={false} />
                   <Tooltip {...TOOLTIP_STYLE} formatter={(v) => [formatCurrency(v), 'Sales value']} />
@@ -253,7 +255,7 @@ const CompanyDashboard = ({ stats }) => {
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="text-sm text-gray-400 py-16 text-center">No confirmed bookings yet</p>
+            <EmptyState message="No confirmed bookings yet" />
           )}
         </Panel>
       </div>
@@ -267,7 +269,7 @@ const CompanyDashboard = ({ stats }) => {
               { key: 'value', label: 'Value', render: (v) => formatCurrency(v) },
             ]}
             rows={stats.sales.salesLeaderboard}
-            emptyState={<p className="text-sm text-gray-400 py-6 text-center">No bookings yet this month</p>}
+            emptyState={<EmptyState compact message="No bookings yet this month" />}
           />
         </Panel>
 
@@ -280,7 +282,7 @@ const CompanyDashboard = ({ stats }) => {
               { key: 'createdAt', label: 'Booked', render: (v) => formatDate(v) },
             ]}
             rows={stats.recentBookings}
-            emptyState={<p className="text-sm text-gray-400 py-6 text-center">No bookings yet</p>}
+            emptyState={<EmptyState compact message="No bookings yet" />}
           />
         </Panel>
       </div>
@@ -300,7 +302,7 @@ const CompanyDashboard = ({ stats }) => {
               { key: 'scheduledAt', label: 'When', render: (v) => formatDateTime(v) },
             ]}
             rows={stats.pipeline.upcomingSiteVisits}
-            emptyState={<p className="text-sm text-gray-400 py-6 text-center">Nothing scheduled this week</p>}
+            emptyState={<EmptyState compact message="Nothing scheduled this week" />}
           />
         </Panel>
 
@@ -313,7 +315,7 @@ const CompanyDashboard = ({ stats }) => {
               { key: 'createdAt', label: 'Sent', render: (v) => formatDate(v) },
             ]}
             rows={stats.attention.pendingQuotationsAging.items}
-            emptyState={<p className="text-sm text-gray-400 py-6 text-center">Nothing waiting 3+ days</p>}
+            emptyState={<EmptyState compact message="Nothing waiting 3+ days" />}
           />
         </Panel>
       </div>
@@ -345,7 +347,7 @@ const PersonalDashboard = ({ stats }) => (
             { key: 'scheduledAt', label: 'When', render: (v) => formatDateTime(v) },
           ]}
           rows={stats.mySiteVisitsToday.items}
-          emptyState={<p className="text-sm text-gray-400 py-6 text-center">Nothing scheduled today</p>}
+          emptyState={<EmptyState compact message="Nothing scheduled today" />}
         />
       </Panel>
 
@@ -357,7 +359,7 @@ const PersonalDashboard = ({ stats }) => (
             { key: 'scheduledAt', label: 'Was Due', render: (v) => formatDate(v) },
           ]}
           rows={stats.myFollowUps.overdue.items}
-          emptyState={<p className="text-sm text-gray-400 py-6 text-center">Nothing overdue — you're caught up</p>}
+          emptyState={<EmptyState compact message="Nothing overdue — you're caught up" />}
         />
       </Panel>
     </div>
@@ -371,7 +373,7 @@ const PersonalDashboard = ({ stats }) => (
             { key: 'scheduledAt', label: 'When', render: (v) => formatDateTime(v) },
           ]}
           rows={stats.myFollowUps.dueToday.items}
-          emptyState={<p className="text-sm text-gray-400 py-6 text-center">None due today</p>}
+          emptyState={<EmptyState compact message="None due today" />}
         />
       </Panel>
 
@@ -384,7 +386,7 @@ const PersonalDashboard = ({ stats }) => (
             { key: 'createdAt', label: 'Sent', render: (v) => formatDate(v) },
           ]}
           rows={stats.myPendingQuotations.items}
-          emptyState={<p className="text-sm text-gray-400 py-6 text-center">No quotations awaiting a decision</p>}
+          emptyState={<EmptyState compact message="No quotations awaiting a decision" />}
         />
       </Panel>
     </div>
@@ -398,7 +400,7 @@ const PersonalDashboard = ({ stats }) => (
           { key: 'stage', label: 'Stage', render: (v) => STAGE_LABELS[v] || v },
         ]}
         rows={stats.myOpenInquiries.items}
-        emptyState={<p className="text-sm text-gray-400 py-6 text-center">No open inquiries assigned to you</p>}
+        emptyState={<EmptyState compact message="No open inquiries assigned to you" />}
       />
     </Panel>
   </>
@@ -411,12 +413,17 @@ const DashboardPage = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchStats = useCallback(() => {
+    setLoading(true);
     statsService.getStats()
       .then(setStats)
       .catch(() => showError("Couldn't load dashboard data")) // Non-blocking — dashboard degrades gracefully
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   const subtitle = {
     platform: 'Platform overview',
@@ -431,7 +438,7 @@ const DashboardPage = () => {
       {loading ? (
         <LoadingState label="Loading dashboard..." />
       ) : !stats ? (
-        <p className="text-sm text-gray-400">Couldn't load dashboard data.</p>
+        <ErrorState message="Couldn't load dashboard data" onRetry={fetchStats} />
       ) : stats.scope === 'platform' ? (
         <PlatformDashboard stats={stats} />
       ) : stats.scope === 'personal' ? (

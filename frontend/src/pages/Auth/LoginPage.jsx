@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { Building2, Eye, EyeOff } from 'lucide-react';
+import { Building2, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/shared/Button';
-import Input from '../../components/shared/Input';
-import Card from '../../components/shared/Card';
+import FormError from '../../components/shared/FormError';
 
 const LoginPage = () => {
   const { login, user } = useAuth();
@@ -44,21 +43,22 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen bg-app flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center mb-3">
-            <Building2 size={24} className="text-white" />
-          </div>
-          <h1 className="text-xl font-semibold text-gray-900">Real Estate CRM</h1>
-          <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
+      <div className="w-full max-w-sm animate-scale-in">
+        <div className="w-11 h-11 rounded-xl bg-primary flex items-center justify-center mb-6">
+          <Building2 size={22} className="text-white" />
         </div>
 
-        <Card padding="p-6" className="animate-scale-in">
-          <form onSubmit={handleSubmit} noValidate>
-            <div className="flex flex-col gap-4">
-              <Input
-                label="Email"
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Sign in</h1>
+        <p className="text-sm text-gray-400 -mt-0.5">to Real Estate CRM</p>
+
+        <form onSubmit={handleSubmit} noValidate className="mt-8">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="email" className="text-xs font-medium text-gray-400">
+                Email
+              </label>
+              <input
+                id="email"
                 name="email"
                 type="email"
                 value={form.email}
@@ -67,50 +67,48 @@ const LoginPage = () => {
                 required
                 disabled={loading}
                 autoComplete="email"
+                className="w-full pb-2 text-sm text-gray-900 bg-transparent border-0 border-b-[1.5px] border-gray-300 focus:outline-none focus:border-primary transition-colors duration-150 ease-snappy disabled:text-gray-400"
               />
-
-              <div className="flex flex-col gap-1">
-                <label htmlFor="password" className="text-sm font-medium text-gray-700">
-                  Password <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={form.password}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                    disabled={loading}
-                    autoComplete="current-password"
-                    className="w-full px-3 py-2 pr-10 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-50 disabled:cursor-not-allowed"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    tabIndex={-1}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  {error}
-                </div>
-              )}
-
-              <Button type="submit" loading={loading} className="w-full justify-center mt-1">
-                Sign In
-              </Button>
             </div>
-          </form>
-        </Card>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="password" className="text-xs font-medium text-gray-400">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  disabled={loading}
+                  autoComplete="current-password"
+                  className="w-full pb-2 pr-8 text-sm text-gray-900 bg-transparent border-0 border-b-[1.5px] border-gray-300 focus:outline-none focus:border-primary transition-colors duration-150 ease-snappy disabled:text-gray-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-0 bottom-2 text-gray-400 hover:text-gray-600 transition-colors duration-150 ease-snappy"
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            <FormError message={error} />
+
+            <Button type="submit" loading={loading} className="w-full justify-center gap-1.5 mt-1">
+              Sign In
+              {!loading && <ArrowRight size={15} />}
+            </Button>
+          </div>
+        </form>
+
+        <p className="text-xs text-gray-400 mt-10">
           Real Estate CRM — Phase 1
         </p>
       </div>

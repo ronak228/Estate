@@ -4,6 +4,7 @@ import FormLayout from './FormLayout';
 import Select from './Select';
 import Input from './Input';
 import Textarea from './Textarea';
+import FormError from './FormError';
 import { showSuccess } from '../../lib/toast';
 
 const TYPE_OPTIONS = [
@@ -114,11 +115,7 @@ const InteractionForm = ({ contactId, inquiryOptions = [], onSuccess, onCancel }
         placeholder="What was discussed..."
       />
 
-      {apiError && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          {apiError}
-        </div>
-      )}
+      <FormError message={apiError} />
     </FormLayout>
   );
 };

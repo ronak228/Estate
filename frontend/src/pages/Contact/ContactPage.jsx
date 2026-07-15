@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Users } from 'lucide-react';
 import contactService from '../../services/contactService';
 import PageLayout from '../../components/shared/PageLayout';
@@ -12,12 +12,13 @@ import { formatDate } from '../../utils/format';
 
 const ContactPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -91,6 +92,11 @@ const ContactPage = () => {
       <PageHeader
         title="Contacts"
         subtitle="Centralized contact database — one contact, many inquiries"
+        actions={
+          <span className="inline-flex items-center text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-2.5 py-1">
+            {total} total
+          </span>
+        }
       />
 
       <div className="flex flex-wrap gap-3 mb-4 items-center justify-between">

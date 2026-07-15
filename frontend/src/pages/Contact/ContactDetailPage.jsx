@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Edit } from 'lucide-react';
+import { ArrowLeft, Edit, Plus, Phone, Mail, Building2, MapPin, Wallet, Tag, Activity } from 'lucide-react';
 import contactService from '../../services/contactService';
 import PageLayout from '../../components/shared/PageLayout';
 import PageHeader from '../../components/shared/PageHeader';
@@ -14,6 +14,24 @@ import InteractionForm from '../../components/shared/InteractionForm';
 import Card from '../../components/shared/Card';
 import ContactForm from './ContactForm';
 import { formatDate, formatCurrency } from '../../utils/format';
+
+const SectionIcon = ({ icon: Icon }) => (
+  <div className="w-9 h-9 rounded-lg bg-primary-50 text-primary flex items-center justify-center flex-shrink-0">
+    <Icon size={17} />
+  </div>
+);
+
+const DetailField = ({ icon: Icon, label, value, span }) => (
+  <div className={span ? 'col-span-2' : undefined}>
+    <dt className="text-[11px] text-gray-400 flex items-center gap-1.5">
+      <Icon size={12} className="text-gray-400" />
+      {label}
+    </dt>
+    <dd className="font-semibold text-gray-800 mt-1">{value}</dd>
+  </div>
+);
+
+const TERMINAL_STAGES = ['NOT_INTERESTED', 'BOOKED'];
 
 const ContactDetailPage = () => {
   const { id } = useParams();
@@ -52,6 +70,11 @@ const ContactDetailPage = () => {
     label: `${inq.project?.name || 'No project'} — ${inq.stage}`,
   }));
 
+  const inquiries = contact.inquiries || [];
+  const activeInquiries = inquiries.filter((inq) => !TERMINAL_STAGES.includes(inq.stage)).length;
+  const daysSince = Math.max(0, Math.floor((Date.now() - new Date(contact.createdAt)) / 86400000));
+  const hasBudget = contact.budgetMin != null || contact.budgetMax != null;
+
   return (
     <PageLayout>
       <PageHeader
@@ -69,71 +92,101 @@ const ContactDetailPage = () => {
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* At-a-glance */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Budget Range</p>
+          <p className="text-sm font-bold text-gray-900 mt-1.5 tabular-nums">
+            {hasBudget
+              ? `${contact.budgetMin != null ? formatCurrency(contact.budgetMin) : '—'} – ${contact.budgetMax != null ? formatCurrency(contact.budgetMax) : '—'}`
+              : '—'}
+          </p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Preferred Area</p>
+          <p className="text-sm font-bold text-gray-900 mt-1.5 truncate">{contact.preferredArea || '—'}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Inquiries</p>
+          <p className="text-lg font-bold text-gray-900 mt-1.5 tabular-nums">{inquiries.length} total</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">{activeInquiries} active</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Contact Since</p>
+          <p className="text-sm font-bold text-gray-900 mt-1.5">{formatDate(contact.createdAt)}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">{daysSince} day{daysSince === 1 ? '' : 's'}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
         {/* ── Left: Profile + Budget + Inquiries ── */}
         <div className="lg:col-span-2 space-y-4">
 
           {/* Profile card */}
-          <Card title="Profile">
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-              <div>
-                <dt className="text-gray-500">Phone</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{contact.phone}</dd>
+          <Card
+            title={
+              <div className="flex items-center gap-3">
+                <SectionIcon icon={Phone} />
+                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Profile</h2>
               </div>
-              <div>
-                <dt className="text-gray-500">Email</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{contact.email || '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">Company</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{contact.company_name || '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">Preferred Area</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">{contact.preferredArea || '—'}</dd>
-              </div>
+            }
+          >
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+              <DetailField icon={Phone} label="Phone" value={contact.phone} />
+              <DetailField icon={Mail} label="Email" value={contact.email || '—'} />
+              <DetailField icon={Building2} label="Company" value={contact.company_name || '—'} />
+              <DetailField icon={MapPin} label="Preferred Area" value={contact.preferredArea || '—'} />
               {contact.address && (
-                <div className="col-span-2">
-                  <dt className="text-gray-500">Address</dt>
-                  <dd className="font-medium text-gray-900 mt-0.5">{contact.address}</dd>
-                </div>
+                <DetailField icon={MapPin} label="Address" value={contact.address} span />
               )}
             </dl>
           </Card>
 
           {/* Budget card */}
-          <Card title="Budget & Preferences">
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-              <div>
-                <dt className="text-gray-500">Budget Min</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">
-                  {contact.budgetMin != null ? formatCurrency(contact.budgetMin) : '—'}
-                </dd>
+          <Card
+            title={
+              <div className="flex items-center gap-3">
+                <SectionIcon icon={Wallet} />
+                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Budget &amp; Preferences</h2>
               </div>
-              <div>
-                <dt className="text-gray-500">Budget Max</dt>
-                <dd className="font-medium text-gray-900 mt-0.5">
-                  {contact.budgetMax != null ? formatCurrency(contact.budgetMax) : '—'}
-                </dd>
-              </div>
+            }
+          >
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+              <DetailField
+                icon={Wallet}
+                label="Budget Min"
+                value={contact.budgetMin != null ? formatCurrency(contact.budgetMin) : '—'}
+              />
+              <DetailField
+                icon={Wallet}
+                label="Budget Max"
+                value={contact.budgetMax != null ? formatCurrency(contact.budgetMax) : '—'}
+              />
             </dl>
-            {!contact.budgetMin && !contact.budgetMax && (
-              <p className="text-xs text-gray-400 mt-2">No budget information recorded yet.</p>
+            {!hasBudget && (
+              <p className="text-xs text-gray-400 mt-3">No budget information recorded yet.</p>
             )}
           </Card>
 
           {/* Inquiry history */}
-          <Card title={`Inquiry History (${contact.inquiries?.length || 0})`}>
-            {contact.inquiries?.length === 0 ? (
+          <Card
+            title={
+              <div className="flex items-center gap-3">
+                <SectionIcon icon={Tag} />
+                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Inquiry History ({inquiries.length})</h2>
+              </div>
+            }
+          >
+            {inquiries.length === 0 ? (
               <p className="text-sm text-gray-400">No inquiries linked yet.</p>
             ) : (
               <ul className="space-y-2">
-                {contact.inquiries.map((inq) => (
+                {inquiries.map((inq) => (
                   <li key={inq.id}>
                     <Link
                       to={`/inquiries/${inq.id}`}
-                      className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-primary hover:bg-gray-50 transition-colors"
+                      className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-primary hover:bg-gray-50 transition-colors duration-150 ease-snappy"
                     >
                       <div>
                         <p className="text-sm font-medium text-gray-900">
@@ -157,12 +210,25 @@ const ContactDetailPage = () => {
           </Card>
         </div>
 
-        {/* ── Right: Interaction log ── */}
-        <Card title="Interaction Log" className="h-fit">
+        {/* ── Right: Interaction log — sticky rail ── */}
+        <Card
+          className="h-fit lg:sticky lg:top-6"
+          title={
+            <div className="flex items-center gap-3">
+              <SectionIcon icon={Activity} />
+              <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Interaction Log</h2>
+            </div>
+          }
+          actions={
+            <Button variant="ghost" size="sm" icon={Plus} onClick={() => setInteractionOpen(true)}>
+              Log
+            </Button>
+          }
+        >
           <InteractionLog
             interactions={contact.interactions || []}
             onAdd={() => setInteractionOpen(true)}
-            canAdd
+            canAdd={false}
           />
         </Card>
       </div>

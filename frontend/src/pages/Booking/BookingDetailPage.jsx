@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Download, Plus, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Download, Plus, RefreshCw, CheckCircle, AlertCircle, Wallet, FileText, ShieldCheck, Building2, User, PhoneCall } from 'lucide-react';
 import bookingService from '../../services/bookingService';
 import bookingDocumentService from '../../services/bookingDocumentService';
 import { useAuth } from '../../context/AuthContext';
@@ -12,15 +12,24 @@ import StatusBadge from '../../components/shared/StatusBadge';
 import LoadingState from '../../components/shared/LoadingState';
 import ErrorState from '../../components/shared/ErrorState';
 import Modal from '../../components/shared/Modal';
+import FormError from '../../components/shared/FormError';
 import PaymentList from '../../components/shared/PaymentList';
 import PaymentForm from '../../components/shared/PaymentForm';
 import DocumentUploader from '../../components/shared/DocumentUploader';
 import Card from '../../components/shared/Card';
 import Textarea from '../../components/shared/Textarea';
+import { RecordList, RecordRow } from '../../components/shared/RecordList';
+import CopyIdChip from '../../components/shared/CopyIdChip';
 
 import { showSuccess, showError, getErrorMessage } from '../../lib/toast';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/format';
 import { getBookingFinancials, getPaymentHistory } from '../../utils/booking';
+
+const SectionIcon = ({ icon: Icon }) => (
+  <div className="w-9 h-9 rounded-lg bg-primary-50 text-primary flex items-center justify-center flex-shrink-0">
+    <Icon size={17} />
+  </div>
+);
 
 const BookingDetailPage = () => {
   const { id } = useParams();
@@ -91,6 +100,20 @@ const BookingDetailPage = () => {
       showError('Failed to download receipt');
     } finally {
       setDownloadingPdf(false);
+    }
+  };
+
+  const handleDownloadPaymentReceipt = async (payment) => {
+    try {
+      const blob = await bookingService.getPaymentReceiptBlob(id, payment.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `payment-receipt-${payment.id.slice(0, 8)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showError(getErrorMessage(err, 'Failed to download payment receipt'));
     }
   };
 
@@ -210,7 +233,7 @@ const BookingDetailPage = () => {
             </Button>
             {isManager && booking.status === 'CONFIRMED' && (
               <Button
-                variant="outline"
+                variant="dangerOutline"
                 size="sm"
                 icon={AlertCircle}
                 onClick={() => { setCancelError(''); setCancelReason(''); setCancelOpen(true); }}
@@ -222,29 +245,61 @@ const BookingDetailPage = () => {
         }
       />
 
-      {downloadError && (
-        <p className="text-sm text-red-600 mb-4">{downloadError}</p>
-      )}
+      <FormError message={downloadError} className="mb-4" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* At-a-glance */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Total Amount</p>
+          <p className="text-lg font-bold text-primary mt-1.5 tabular-nums">{formatCurrency(totalAmount)}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Paid Amount</p>
+          <p className="text-lg font-bold text-success mt-1.5 tabular-nums">{formatCurrency(totalPaid)}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Remaining</p>
+          <p className={`text-lg font-bold mt-1.5 tabular-nums ${remainingAmount > 0 ? 'text-danger' : 'text-success'}`}>
+            {remainingAmount > 0 ? formatCurrency(remainingAmount) : 'Fully Paid'}
+          </p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Status</p>
+          <div className="mt-1.5"><StatusBadge value={booking.status} /></div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
         {/* ── Left column (2/3) ─────────────────────────────────────────────── */}
         <div className="lg:col-span-2 flex flex-col gap-6">
 
           {/* Payments section */}
           <Card
-            title="Payment History"
+            title={
+              <div className="flex items-center gap-3">
+                <SectionIcon icon={Wallet} />
+                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Payment History</h2>
+              </div>
+            }
             actions={isManager && (
               <Button size="sm" icon={Plus} onClick={() => setPaymentOpen(true)}>
                 Add Payment
               </Button>
             )}
           >
-            <PaymentList payments={paymentHistory} />
+            <PaymentList payments={paymentHistory} onDownload={handleDownloadPaymentReceipt} />
           </Card>
 
           {/* Documents section */}
-          <Card title="Booking Documents">
+          <Card
+            title={
+              <div className="flex items-center gap-3">
+                <SectionIcon icon={FileText} />
+                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Booking Documents</h2>
+              </div>
+            }
+          >
             <DocumentUploader
               documents={documents}
               onUpload={handleUploadDocument}
@@ -257,11 +312,18 @@ const BookingDetailPage = () => {
           </Card>
         </div>
 
-        {/* ── Right column (1/3) ───────────────────────────────────────────── */}
-        <div className="flex flex-col gap-4">
+        {/* ── Right column (1/3) — sticky rail so it stays visible while the left column scrolls ── */}
+        <div className="flex flex-col gap-4 lg:sticky lg:top-6">
 
           {/* Booking status card */}
-          <Card title="Booking Status" actions={<StatusBadge value={booking.status} />}>
+          <Card
+            title={
+              <div className="flex items-center gap-3">
+                <SectionIcon icon={ShieldCheck} />
+                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Booking Status</h2>
+              </div>
+            }
+          >
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <dt className="text-gray-500">Booked On</dt>
@@ -317,8 +379,15 @@ const BookingDetailPage = () => {
             )}
           </Card>
 
-          {/* Financial summary */}
-          <Card title="Financial Summary">
+          {/* Financial summary — fields not already covered by the stat strip above */}
+          <Card
+            title={
+              <div className="flex items-center gap-3">
+                <SectionIcon icon={Wallet} />
+                <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Financial Summary</h2>
+              </div>
+            }
+          >
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <dt className="text-gray-500">Quoted Amount</dt>
@@ -335,86 +404,33 @@ const BookingDetailPage = () => {
                 </div>
               )}
               <div className="flex justify-between border-t border-gray-100 pt-3">
-                <dt className="font-semibold text-gray-900">Total Amount</dt>
-                <dd className="font-bold text-primary text-base">
-                  {formatCurrency(totalAmount)}
-                </dd>
-              </div>
-              <div className="flex justify-between">
                 <dt className="text-gray-500">Token / Booking Amount</dt>
                 <dd className="font-medium text-gray-900">
                   {formatCurrency(tokenAmount)}
-                </dd>
-              </div>
-              <div className="flex justify-between border-t border-gray-100 pt-3">
-                <dt className="text-gray-500">Paid Amount</dt>
-                <dd className="font-semibold text-emerald-600">
-                  {formatCurrency(totalPaid)}
-                </dd>
-              </div>
-              <div className="flex justify-between border-t border-gray-100 pt-3">
-                <dt className="font-semibold text-gray-900">Remaining Amount</dt>
-                <dd className={`font-bold text-base ${remainingAmount > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                  {remainingAmount > 0 ? formatCurrency(remainingAmount) : 'Fully Paid'}
                 </dd>
               </div>
             </dl>
           </Card>
 
           {/* Customer & Property */}
-          <Card title="Customer & Property">
-            <dl className="space-y-3 text-sm">
-              <div>
-                <dt className="text-xs text-gray-400 mb-0.5">Customer</dt>
-                <dd className="font-medium text-gray-900">
-                  {contact ? (
-                    <Link to={`/contacts/${contact.id}`} className="text-primary hover:underline">
-                      {contact.fullName}
-                    </Link>
-                  ) : '—'}
-                </dd>
-                {contact?.phone && (
-                  <dd className="text-xs text-gray-500 mt-0.5">{contact.phone}</dd>
-                )}
-              </div>
-              <div>
-                <dt className="text-xs text-gray-400 mb-0.5">Property</dt>
-                <dd className="font-medium text-gray-900">
-                  Unit {unit?.unitNumber || '—'}
-                </dd>
-                <dd className="text-xs text-gray-500 mt-0.5">
-                  {unit?.project?.name}
-                  {unit?.project?.location ? ` · ${unit.project.location}` : ''}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-400 mb-0.5">Inquiry</dt>
-                <dd>
-                  {inquiry ? (
-                    <Link to={`/inquiries/${inquiry.id}`} className="text-sm text-primary hover:underline">
-                      View Inquiry
-                    </Link>
-                  ) : '—'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-400 mb-0.5">Quotation</dt>
-                <dd>
-                  {quotation ? (
-                    <Link to={`/quotations/${quotation.id}`} className="text-sm text-primary hover:underline">
-                      View Quotation
-                    </Link>
-                  ) : '—'}
-                </dd>
-              </div>
-            </dl>
-          </Card>
+          <RecordList title="Customer & Property" icon={Building2}>
+            <RecordRow
+              to={contact ? `/contacts/${contact.id}` : undefined}
+              icon={User}
+              primary={contact?.fullName || '—'}
+              secondary={contact?.phone}
+            />
+            <RecordRow
+              icon={Building2}
+              primary={`Unit ${unit?.unitNumber || '—'}`}
+              secondary={[unit?.project?.name, unit?.project?.location].filter(Boolean).join(' · ') || undefined}
+            />
+            {inquiry && <RecordRow to={`/inquiries/${inquiry.id}`} icon={PhoneCall} primary="View Inquiry" />}
+            {quotation && <RecordRow to={`/quotations/${quotation.id}`} icon={FileText} primary="View Quotation" />}
+          </RecordList>
 
           {/* Booking ID */}
-          <div className="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3">
-            <p className="text-xs text-gray-400">Booking ID</p>
-            <p className="text-xs font-mono text-gray-600 mt-0.5 break-all">{booking.id}</p>
-          </div>
+          <CopyIdChip label="Booking ID" value={booking.id} />
         </div>
       </div>
 
@@ -453,13 +469,9 @@ const BookingDetailPage = () => {
             rows={3}
             placeholder="e.g. Customer withdrew"
           />
-          {cancelError && (
-            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {cancelError}
-            </div>
-          )}
+          <FormError message={cancelError} />
           <div className="flex justify-end gap-3 pt-2 border-t border-gray-200">
-            <Button variant="ghost" onClick={() => { setCancelOpen(false); setCancelError(''); }}>
+            <Button variant="outline" onClick={() => { setCancelOpen(false); setCancelError(''); }}>
               Keep Booking
             </Button>
             <Button variant="danger" loading={cancelling} onClick={handleCancelBooking}>

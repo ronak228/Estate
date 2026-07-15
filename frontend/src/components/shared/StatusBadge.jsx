@@ -185,4 +185,28 @@ const StatusBadge = ({ value, label, size = 'sm' }) => {
   );
 };
 
+// Complete, literal class strings (not template-interpolated) so Tailwind's
+// content scanner can find them — this is what makes deriving a dot color
+// from STATUS_COLORS' hue at runtime safe under production purge.
+const HUE_DOT = {
+  gray: 'bg-gray-400',
+  blue: 'bg-blue-500',
+  indigo: 'bg-indigo-500',
+  sky: 'bg-sky-500',
+  amber: 'bg-amber-500',
+  emerald: 'bg-emerald-500',
+  red: 'bg-red-500',
+};
+
+/**
+ * StatusDot — small solid dot matching StatusBadge's own color for the same
+ * enum value. Used for "current stage" indicator chips on detail pages.
+ */
+export const StatusDot = ({ value, className = '' }) => {
+  const key = String(value);
+  const colorClass = STATUS_COLORS[key] || STATUS_COLORS[value] || 'bg-gray-100 text-gray-600';
+  const hue = colorClass.match(/text-(\w+)-\d+/)?.[1] || 'gray';
+  return <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${HUE_DOT[hue] || HUE_DOT.gray} ${className}`} />;
+};
+
 export default StatusBadge;

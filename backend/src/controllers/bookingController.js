@@ -5,6 +5,7 @@ const { VALID_PAYMENT_MODES } = require('../utils/constants');
 const { isPositiveInteger, isNonNegativeInteger } = require('../utils/money');
 const { syncInventory, createSalesOrder, generateInvoice, syncCustomer } = require('../utils/erpSync');
 const generateBookingReceiptPdf = require('../utils/generateBookingReceiptPdf');
+const generatePaymentReceiptPdf = require('../utils/generatePaymentReceiptPdf');
 const logger = require('../utils/logger');
 
 // ─── Shared include ───────────────────────────────────────────────────────────
@@ -238,7 +239,7 @@ const createBooking = async (req, res, next) => {
 // ─── GET /api/bookings ────────────────────────────────────────────────────────
 const listBookings = async (req, res, next) => {
   try {
-    const { status, search } = req.query;
+    const { status, search, inquiryId } = req.query;
     const companyId = req.user.companyId;
     const { page, pageSize, skip, take } = getPagination(req.query);
 
@@ -247,6 +248,7 @@ const listBookings = async (req, res, next) => {
     };
 
     if (status) where.status = status;
+    if (inquiryId) where.inquiryId = inquiryId;
 
     if (search) {
       where.OR = [
@@ -354,7 +356,7 @@ const getBookingReceipt = async (req, res, next) => {
 
     const company = await db.company.findUnique({
       where: { id: companyId },
-      select: { name: true, email: true, phone: true, address: true, logoUrl: true },
+      select: { name: true, email: true, phone: true, address: true, logoUrl: true, signatureUrl: true },
     });
 
     const pdfBuffer = await generateBookingReceiptPdf({
@@ -369,6 +371,81 @@ const getBookingReceipt = async (req, res, next) => {
     });
 
     const filename = `booking-receipt-${booking.id.slice(0, 8)}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.send(pdfBuffer);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/bookings/:id/payments/:paymentId/receipt
+ * A receipt for a single payment row. `:paymentId` may be the literal string
+ * "token" — the booking's token/booking amount isn't a BookingPayment row
+ * (see utils/booking.js on the frontend, getPaymentHistory), so it's
+ * synthesized here from the booking itself rather than looked up.
+ */
+const getPaymentReceipt = async (req, res, next) => {
+  try {
+    const companyId = req.user.companyId;
+    const { id: bookingId, paymentId } = req.params;
+
+    const booking = await db.booking.findFirst({
+      where: { id: bookingId, inquiry: { companyId } },
+      include: {
+        inquiry: {
+          select: { id: true, contact: { select: { id: true, fullName: true, phone: true, email: true } } },
+        },
+        unit: { include: { project: { select: { id: true, name: true, location: true } } } },
+        payments: true,
+        bookedBy: { select: { id: true, fullName: true } },
+      },
+    });
+
+    if (!booking) return sendError(res, 'Booking not found', 404);
+
+    let payment;
+    if (paymentId === 'token') {
+      payment = {
+        id: booking.id,
+        isToken: true,
+        amount: booking.bookingAmount,
+        mode: null,
+        paidAt: booking.createdAt,
+        referenceNumber: null,
+        createdBy: booking.bookedBy,
+      };
+    } else {
+      payment = await db.bookingPayment.findFirst({
+        where: { id: paymentId, bookingId: booking.id },
+        include: { createdBy: { select: { id: true, fullName: true } } },
+      });
+      if (!payment) return sendError(res, 'Payment not found', 404);
+    }
+
+    const paymentsTotal = booking.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+    const totalAmount = Number(booking.finalAmount || 0);
+    const totalPaid = Number(booking.bookingAmount || 0) + paymentsTotal;
+    const remainingAmount = Math.max(totalAmount - totalPaid, 0);
+
+    const company = await db.company.findUnique({
+      where: { id: companyId },
+      select: { name: true, email: true, phone: true, address: true, logoUrl: true, signatureUrl: true },
+    });
+
+    const pdfBuffer = await generatePaymentReceiptPdf({
+      payment,
+      booking,
+      financials: { totalAmount, totalPaid, remainingAmount },
+      unit: booking.unit,
+      contact: booking.inquiry?.contact,
+      company,
+    });
+
+    const filename = `payment-receipt-${payment.id.slice(0, 8)}.pdf`;
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
@@ -626,6 +703,7 @@ module.exports = {
   listBookings,
   getBooking,
   getBookingReceipt,
+  getPaymentReceipt,
   retryErpSync,
   addPayment,
   listPayments,

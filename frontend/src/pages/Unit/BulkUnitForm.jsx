@@ -3,8 +3,10 @@ import { AlertTriangle } from 'lucide-react';
 import unitService from '../../services/unitService';
 import Input from '../../components/shared/Input';
 import Button from '../../components/shared/Button';
+import FormLayout from '../../components/shared/FormLayout';
+import FormError from '../../components/shared/FormError';
 import { showSuccess } from '../../lib/toast';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, getCurrencySymbol } from '../../utils/format';
 import { isPositiveInteger } from '../../utils/validation';
 import { calcAreaAndBasePrice } from '../../utils/unitCalc';
 import {
@@ -173,118 +175,111 @@ const BulkUnitForm = ({ projectId, existingUnitNumbers = [], onSuccess, onCancel
 
   if (step === 'config') {
     return (
-      <form onSubmit={handleGeneratePreview} noValidate>
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Starting Floor"
-              name="startFloor"
-              type="number"
-              value={config.startFloor}
-              onChange={handleConfigChange}
-              required
-              error={configErrors.startFloor}
-              step="1"
-            />
-            <Input
-              label="Ending Floor"
-              name="endFloor"
-              type="number"
-              value={config.endFloor}
-              onChange={handleConfigChange}
-              required
-              error={configErrors.endFloor}
-              step="1"
-            />
-          </div>
-
+      <FormLayout
+        onSubmit={handleGeneratePreview}
+        onCancel={onCancel}
+        submitLabel="Generate Preview"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Input
-            label="Units per Floor"
-            name="unitsPerFloor"
+            label="Starting Floor"
+            name="startFloor"
             type="number"
-            value={config.unitsPerFloor}
+            value={config.startFloor}
             onChange={handleConfigChange}
             required
-            error={configErrors.unitsPerFloor}
-            min="1"
+            error={configErrors.startFloor}
             step="1"
           />
-
           <Input
-            label="Unit Number Suffixes"
-            name="suffixes"
-            value={config.suffixes}
-            onChange={handleConfigChange}
-            required
-            error={configErrors.suffixes}
-            placeholder="e.g. 01,02,03,04"
-          />
-          <p className="-mt-3 text-xs text-gray-400">
-            One suffix per unit on a floor. Unit number = floor + suffix (floor 1 → 101,102,103,104; floor 10 → 1001,1002,1003,1004).
-          </p>
-
-          <Input
-            label="Unit Type (optional)"
-            name="unitType"
-            value={config.unitType}
-            onChange={handleConfigChange}
-            placeholder="e.g. 2BHK"
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Width (ft)"
-              name="width"
-              type="number"
-              value={config.width}
-              onChange={handleConfigChange}
-              required
-              error={configErrors.width}
-              placeholder="e.g. 20"
-              min="0.01"
-              step="0.01"
-            />
-            <Input
-              label="Length (ft)"
-              name="length"
-              type="number"
-              value={config.length}
-              onChange={handleConfigChange}
-              required
-              error={configErrors.length}
-              placeholder="e.g. 38"
-              min="0.01"
-              step="0.01"
-            />
-          </div>
-
-          <Input
-            label="Price per Sq. Ft. (₹)"
-            name="pricePerSqFt"
+            label="Ending Floor"
+            name="endFloor"
             type="number"
-            value={config.pricePerSqFt}
+            value={config.endFloor}
             onChange={handleConfigChange}
             required
-            error={configErrors.pricePerSqFt}
-            placeholder="e.g. 5000"
-            min="1"
+            error={configErrors.endFloor}
             step="1"
           />
-
-          <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-            Common width, length, and price apply to every generated unit — edit individual rows on the next screen before saving.
-          </p>
         </div>
 
-        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
-          {onCancel && (
-            <Button variant="outline" type="button" onClick={onCancel}>
-              Cancel
-            </Button>
-          )}
-          <Button type="submit">Generate Preview</Button>
+        <Input
+          label="Units per Floor"
+          name="unitsPerFloor"
+          type="number"
+          value={config.unitsPerFloor}
+          onChange={handleConfigChange}
+          required
+          error={configErrors.unitsPerFloor}
+          min="1"
+          step="1"
+        />
+
+        <Input
+          label="Unit Number Suffixes"
+          name="suffixes"
+          value={config.suffixes}
+          onChange={handleConfigChange}
+          required
+          error={configErrors.suffixes}
+          placeholder="e.g. 01,02,03,04"
+        />
+        <p className="-mt-3 text-xs text-gray-400">
+          One suffix per unit on a floor. Unit number = floor + suffix (floor 1 → 101,102,103,104; floor 10 → 1001,1002,1003,1004).
+        </p>
+
+        <Input
+          label="Unit Type (optional)"
+          name="unitType"
+          value={config.unitType}
+          onChange={handleConfigChange}
+          placeholder="e.g. 2BHK"
+        />
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Input
+            label="Width (ft)"
+            name="width"
+            type="number"
+            value={config.width}
+            onChange={handleConfigChange}
+            required
+            error={configErrors.width}
+            placeholder="e.g. 20"
+            min="0.01"
+            step="0.01"
+          />
+          <Input
+            label="Length (ft)"
+            name="length"
+            type="number"
+            value={config.length}
+            onChange={handleConfigChange}
+            required
+            error={configErrors.length}
+            placeholder="e.g. 38"
+            min="0.01"
+            step="0.01"
+          />
         </div>
-      </form>
+
+        <Input
+          label={`Price per Sq. Ft. (${getCurrencySymbol()})`}
+          name="pricePerSqFt"
+          type="number"
+          value={config.pricePerSqFt}
+          onChange={handleConfigChange}
+          required
+          error={configErrors.pricePerSqFt}
+          placeholder="e.g. 5000"
+          min="1"
+          step="1"
+        />
+
+        <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+          Common width, length, and price apply to every generated unit — edit individual rows on the next screen before saving.
+        </p>
+      </FormLayout>
     );
   }
 
@@ -294,13 +289,9 @@ const BulkUnitForm = ({ projectId, existingUnitNumbers = [], onSuccess, onCancel
         <p className="text-sm text-gray-600">
           <span className="font-semibold text-gray-900">{rows.length}</span> unit{rows.length === 1 ? '' : 's'} ready to create
         </p>
-        <button
-          type="button"
-          onClick={() => setStep('config')}
-          className="text-xs text-indigo-600 hover:underline"
-        >
+        <Button variant="link" size="sm" onClick={() => setStep('config')}>
           Back to Config
-        </button>
+        </Button>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 max-h-[50vh]">
@@ -311,7 +302,7 @@ const BulkUnitForm = ({ projectId, existingUnitNumbers = [], onSuccess, onCancel
               <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Floor</th>
               <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Width</th>
               <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Length</th>
-              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">₹/sq.ft.</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">{getCurrencySymbol()}/sq.ft.</th>
               <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 uppercase">Base Price</th>
               <th className="px-3 py-2" />
             </tr>
@@ -366,13 +357,14 @@ const BulkUnitForm = ({ projectId, existingUnitNumbers = [], onSuccess, onCancel
                         <AlertTriangle size={12} /> {issue}
                       </span>
                     ) : (
-                      <button
-                        type="button"
+                      <Button
+                        variant="link"
+                        size="sm"
                         onClick={() => removeRow(index)}
-                        className="text-xs text-gray-400 hover:text-red-600"
+                        className="!text-gray-400 hover:!text-danger"
                       >
                         Remove
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>
@@ -382,11 +374,7 @@ const BulkUnitForm = ({ projectId, existingUnitNumbers = [], onSuccess, onCancel
         </table>
       </div>
 
-      {apiError && (
-        <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          {apiError}
-        </div>
-      )}
+      <FormError message={apiError} className="mt-3" />
 
       <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
         {onCancel && (

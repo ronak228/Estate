@@ -3,6 +3,7 @@ import companyService from '../../services/companyService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
 import Select from '../../components/shared/Select';
+import FormError from '../../components/shared/FormError';
 import { showSuccess } from '../../lib/toast';
 
 const ROLE_OPTIONS = [
@@ -149,11 +150,7 @@ const EmployeeForm = ({ employee, onSuccess, onCancel }) => {
         onChange={handleChange}
       />
 
-      {apiError && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          {apiError}
-        </div>
-      )}
+      <FormError message={apiError} />
     </FormLayout>
   );
 };

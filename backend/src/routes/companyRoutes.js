@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/authMiddleware');
-const { companyLogoUploader } = require('../middleware/uploadMiddleware');
+const { companyBrandingUploader } = require('../middleware/uploadMiddleware');
 const {
   createCompany,
   listCompanies,
@@ -12,6 +12,7 @@ const {
   updateMyCompanySettings,
   createEmployee,
   listEmployees,
+  getEmployee,
   updateEmployee,
   updateEmployeeStatus,
   resetEmployeePassword,
@@ -31,11 +32,12 @@ router.put(
   '/me/settings',
   authenticate,
   authorize('ADMIN'),
-  companyLogoUploader.single('logo'),
+  companyBrandingUploader.fields([{ name: 'logo', maxCount: 1 }, { name: 'signature', maxCount: 1 }]),
   updateMyCompanySettings
 );
 router.post('/me/employees', authenticate, authorize('ADMIN'), createEmployee);
 router.get('/me/employees', authenticate, authorize('ADMIN', 'MANAGER'), listEmployees);
+router.get('/me/employees/:id', authenticate, authorize('ADMIN', 'MANAGER'), getEmployee);
 router.put('/me/employees/:id', authenticate, authorize('ADMIN'), updateEmployee);
 router.patch('/me/employees/:id/status', authenticate, authorize('ADMIN'), updateEmployeeStatus);
 router.patch(

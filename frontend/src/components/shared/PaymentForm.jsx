@@ -2,6 +2,7 @@ import { useState } from 'react';
 import FormLayout from './FormLayout';
 import Input from './Input';
 import Select from './Select';
+import FormError from './FormError';
 import { isPositiveInteger } from '../../utils/validation';
 
 const PAYMENT_MODE_OPTIONS = [
@@ -108,11 +109,7 @@ const PaymentForm = ({ onSubmit, onCancel, submitting = false, apiError = '' }) 
         placeholder="Cheque no., UTR, transaction ID..."
       />
 
-      {apiError && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          {apiError}
-        </div>
-      )}
+      <FormError message={apiError} />
     </FormLayout>
   );
 };

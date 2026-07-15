@@ -133,7 +133,22 @@ const getCompanyById = async (req, res, next) => {
   try {
     const company = await db.company.findUnique({
       where: { id: req.params.id },
-      include: { _count: { select: { users: true } } },
+      include: {
+        _count: { select: { users: true, contacts: true, projects: true, inquiries: true } },
+        users: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: true,
+            phone: true,
+            isActive: true,
+            lastLoginAt: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
     });
 
     if (!company) {
@@ -290,7 +305,7 @@ const getMyCompany = async (req, res, next) => {
  */
 const updateMyCompanySettings = async (req, res, next) => {
   try {
-    const { name, timezone, currency, primaryColor } = req.body;
+    const { name, timezone, currency } = req.body;
 
     if (name !== undefined && !name.trim()) {
       return sendError(res, 'Company name cannot be empty', 400);
@@ -300,11 +315,14 @@ const updateMyCompanySettings = async (req, res, next) => {
     if (name !== undefined) updateData.name = name.trim();
     if (timezone) updateData.timezone = timezone;
     if (currency) updateData.currency = currency;
-    if (primaryColor !== undefined) updateData.primaryColor = primaryColor;
 
-    // Handle logo upload if file was provided
-    if (req.file) {
-      updateData.logoUrl = `/uploads/companies/${req.file.filename}`;
+    // Handle logo/signature uploads if provided (multer .fields() populates
+    // req.files as { logo: [file], signature: [file] }, not req.file).
+    if (req.files?.logo?.[0]) {
+      updateData.logoUrl = `/uploads/companies/${req.files.logo[0].filename}`;
+    }
+    if (req.files?.signature?.[0]) {
+      updateData.signatureUrl = `/uploads/companies/${req.files.signature[0].filename}`;
     }
 
     const company = await db.company.update({
@@ -410,6 +428,34 @@ const listEmployees = async (req, res, next) => {
       page,
       pageSize,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/companies/me/employees/:id
+ * ADMIN, MANAGER — single employee profile.
+ */
+const getEmployee = async (req, res, next) => {
+  try {
+    const employee = await db.user.findFirst({
+      where: { id: req.params.id, companyId: req.user.companyId },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        phone: true,
+        isActive: true,
+        lastLoginAt: true,
+        createdAt: true,
+      },
+    });
+
+    if (!employee) return sendError(res, 'Employee not found', 404);
+
+    return sendSuccess(res, 'Employee retrieved', { employee });
   } catch (err) {
     next(err);
   }
@@ -546,6 +592,7 @@ module.exports = {
   updateMyCompanySettings,
   createEmployee,
   listEmployees,
+  getEmployee,
   updateEmployee,
   updateEmployeeStatus,
   resetEmployeePassword,

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import companyService from '../../services/companyService';
 import Input from '../../components/shared/Input';
 import Button from '../../components/shared/Button';
+import FormError from '../../components/shared/FormError';
 
 /**
  * ResetPasswordForm — admin resets an employee's password.
@@ -71,11 +72,7 @@ const ResetPasswordForm = ({ employee, onSuccess, onCancel }) => {
           required
           placeholder="Repeat new password"
         />
-        {error && (
-          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-            {error}
-          </div>
-        )}
+        <FormError message={error} />
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" type="button" onClick={onCancel} disabled={submitting}>
             Cancel

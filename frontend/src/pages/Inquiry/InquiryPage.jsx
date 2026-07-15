@@ -130,9 +130,14 @@ const InquiryPage = () => {
         title="Inquiries"
         subtitle="Track and manage all incoming inquiries"
         actions={
-          <Button icon={Plus} onClick={() => setCreateOpen(true)}>
-            New Inquiry
-          </Button>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-2.5 py-1">
+              {total} total
+            </span>
+            <Button icon={Plus} onClick={() => setCreateOpen(true)}>
+              New Inquiry
+            </Button>
+          </div>
         }
       />
 

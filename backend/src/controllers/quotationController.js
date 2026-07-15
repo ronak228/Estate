@@ -208,7 +208,7 @@ const getQuotationPdf = async (req, res, next) => {
     // Load the company details for the PDF header
     const company = await db.company.findUnique({
       where: { id: companyId },
-      select: { name: true, email: true, phone: true, address: true, logoUrl: true },
+      select: { name: true, email: true, phone: true, address: true, logoUrl: true, signatureUrl: true, currency: true },
     });
 
     const pdfBuffer = await generateQuotationPdf({

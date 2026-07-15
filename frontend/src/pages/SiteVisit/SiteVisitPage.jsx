@@ -109,9 +109,14 @@ const SiteVisitPage = () => {
         title="Site Visits"
         subtitle="Schedule and track property visits"
         actions={
-          <Button icon={Plus} onClick={() => setCreateOpen(true)}>
-            Schedule Visit
-          </Button>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-2.5 py-1">
+              {total} total
+            </span>
+            <Button icon={Plus} onClick={() => setCreateOpen(true)}>
+              Schedule Visit
+            </Button>
+          </div>
         }
       />
 

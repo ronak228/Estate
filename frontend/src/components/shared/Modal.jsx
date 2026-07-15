@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
+import Button from './Button';
 
 /**
  * Modal — centered dialog overlay for quick-add forms and confirmations.
@@ -49,13 +50,7 @@ const Modal = ({ isOpen, onClose, title, children, footer, size = 'md' }) => {
           <h2 id="modal-title" className="text-base font-semibold text-gray-900">
             {title}
           </h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
+          <Button variant="ghost" size="sm" iconOnly icon={X} onClick={onClose} aria-label="Close" title="Close" />
         </div>
 
         {/* Body */}

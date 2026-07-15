@@ -6,6 +6,7 @@ const {
   listBookings,
   getBooking,
   getBookingReceipt,
+  getPaymentReceipt,
   retryErpSync,
   addPayment,
   listPayments,
@@ -27,8 +28,9 @@ router.post('/', authenticate, authorize(...MANAGERS), createBooking);
 router.get('/', authenticate, authorize(...CRM), listBookings);
 router.get('/:id', authenticate, authorize(...CRM), getBooking);
 
-// NOTE: Receipt endpoint returns binary PDF — not JSON envelope (by design)
+// NOTE: Receipt endpoints return binary PDF — not JSON envelope (by design)
 router.get('/:id/receipt', authenticate, authorize(...CRM), getBookingReceipt);
+router.get('/:id/payments/:paymentId/receipt', authenticate, authorize(...CRM), getPaymentReceipt);
 
 // ERP retry (ADMIN/MANAGER only — money-sensitive action)
 router.post('/:id/sync-erp', authenticate, authorize(...MANAGERS), retryErpSync);

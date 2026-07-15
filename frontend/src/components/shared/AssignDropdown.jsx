@@ -43,12 +43,12 @@ const AssignDropdown = ({ users = [], currentAssigneeId, onAssign, loading = fal
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
-          <ul className="absolute z-20 mt-1 right-0 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[180px] max-h-60 overflow-y-auto">
+          <ul className="absolute z-20 mt-1.5 right-0 bg-white border border-gray-200 rounded-lg shadow-dropdown min-w-[180px] max-h-60 overflow-y-auto">
             {users.map((user) => (
               <li key={user.id}>
                 <button
                   onClick={() => handleSelect(user.id)}
-                  className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-primary-50 hover:text-primary ${
+                  className={`w-full text-left px-3 py-2 text-sm transition-colors duration-150 ease-snappy hover:bg-primary-50 hover:text-primary ${
                     user.id === currentAssigneeId ? 'font-semibold text-primary bg-primary-50' : 'text-gray-700'
                   }`}
                 >

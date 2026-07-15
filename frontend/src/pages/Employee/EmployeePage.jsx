@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, UserCog } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, UserCog, Edit, KeyRound } from 'lucide-react';
 import companyService from '../../services/companyService';
 import { useAuth } from '../../context/AuthContext';
 import PageLayout from '../../components/shared/PageLayout';
@@ -13,12 +14,14 @@ import Button from '../../components/shared/Button';
 import Modal from '../../components/shared/Modal';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
 import ErrorState from '../../components/shared/ErrorState';
+import EmptyState from '../../components/shared/EmptyState';
 import EmployeeForm from './EmployeeForm';
 import ResetPasswordForm from './ResetPasswordForm';
 import { showSuccess } from '../../lib/toast';
 import { formatDate } from '../../utils/format';
 
 const EmployeePage = () => {
+  const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'ADMIN';
 
@@ -96,23 +99,27 @@ const EmployeePage = () => {
             key: 'id',
             label: 'Actions',
             render: (_, row) => (
-              <div className="flex gap-1">
+              <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="sm"
+                  iconOnly
+                  icon={Edit}
+                  title="Edit"
+                  aria-label={`Edit ${row.fullName}`}
                   onClick={(e) => { e.stopPropagation(); setEditTarget(row); }}
-                >
-                  Edit
-                </Button>
+                />
                 <Button
                   variant="ghost"
                   size="sm"
+                  iconOnly
+                  icon={KeyRound}
+                  title="Reset Password"
+                  aria-label={`Reset password for ${row.fullName}`}
                   onClick={(e) => { e.stopPropagation(); setResetPasswordTarget(row); }}
-                >
-                  Reset Password
-                </Button>
+                />
                 <Button
-                  variant={row.isActive ? 'outline' : 'ghost'}
+                  variant={row.isActive ? 'dangerOutline' : 'successOutline'}
                   size="sm"
                   onClick={(e) => { e.stopPropagation(); setDeactivateError(''); setDeactivateTarget(row); }}
                 >
@@ -131,11 +138,16 @@ const EmployeePage = () => {
         title="Employees"
         subtitle="Manage your company's team members"
         actions={
-          isAdmin && (
-            <Button icon={Plus} onClick={() => setCreateOpen(true)}>
-              New Employee
-            </Button>
-          )
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center text-xs font-semibold text-gray-500 bg-gray-100 rounded-full px-2.5 py-1">
+              {total} total
+            </span>
+            {isAdmin && (
+              <Button icon={Plus} onClick={() => setCreateOpen(true)}>
+                New Employee
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -180,11 +192,9 @@ const EmployeePage = () => {
             columns={columns}
             rows={items}
             loading={loading}
+            onRowClick={(row) => navigate(`/employees/${row.id}`)}
             emptyState={
-              <div className="flex flex-col items-center py-16">
-                <UserCog size={32} className="text-gray-300 mb-3" />
-                <p className="text-sm text-gray-500">No employees yet.</p>
-              </div>
+              <EmptyState icon={UserCog} message="No employees yet." />
             }
           />
           <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />

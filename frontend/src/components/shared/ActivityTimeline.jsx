@@ -57,7 +57,7 @@ const ActivityTimeline = ({ activities = [] }) => {
               <Icon size={10} />
             </span>
 
-            <div className="p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
+            <div className="p-3 bg-white border border-gray-100 rounded-lg">
               <p className="text-sm text-gray-800">{activity.description}</p>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xs text-gray-400">

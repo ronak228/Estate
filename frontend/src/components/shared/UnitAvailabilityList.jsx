@@ -71,7 +71,7 @@ const UnitAvailabilityList = ({
             key={unit.id}
             onClick={isInteractive ? handleClick : undefined}
             className={`
-              flex items-center justify-between p-3 rounded-lg border transition-colors
+              flex items-center justify-between p-3 rounded-lg border transition-colors duration-150 ease-snappy
               ${isInteractive ? 'cursor-pointer' : ''}
               ${
                 isSelected

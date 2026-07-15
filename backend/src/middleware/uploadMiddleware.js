@@ -41,8 +41,9 @@ const createUploader = (subfolder, allowedMimes, maxSizeMb = 5) => {
   });
 };
 
-// Company logo uploader — images only, max 2 MB
-const companyLogoUploader = createUploader(
+// Company branding uploader (logo + signature) — images only, max 2 MB.
+// Used via .fields([{ name: 'logo' }, { name: 'signature' }]).
+const companyBrandingUploader = createUploader(
   'companies',
   ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'],
   2
@@ -62,4 +63,4 @@ const bookingDocumentUploader = createUploader(
   10
 );
 
-module.exports = { companyLogoUploader, documentUploader, bookingDocumentUploader };
+module.exports = { companyBrandingUploader, documentUploader, bookingDocumentUploader };

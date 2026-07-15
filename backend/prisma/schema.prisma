@@ -139,6 +139,7 @@ model Company {
   timezone          String             @default("Asia/Kolkata")
   currency          String             @default("INR")
   logoUrl           String?
+  signatureUrl      String?
   primaryColor      String?
   users             User[]
   contacts          Contact[]

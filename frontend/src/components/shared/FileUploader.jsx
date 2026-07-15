@@ -42,7 +42,7 @@ const FileUploader = ({
         onDrop={handleDrop}
         onClick={() => inputRef.current?.click()}
         className={`
-          border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors
+          border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors duration-150 ease-snappy
           ${dragOver ? 'border-primary bg-primary-50' : 'border-gray-300 hover:border-primary hover:bg-gray-50'}
         `}
       >

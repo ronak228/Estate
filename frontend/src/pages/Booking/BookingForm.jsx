@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import bookingService from '../../services/bookingService';
 import FormLayout from '../../components/shared/FormLayout';
 import Input from '../../components/shared/Input';
+import FormError from '../../components/shared/FormError';
 import { showSuccess } from '../../lib/toast';
 import { formatCurrency } from '../../utils/format';
 import { isPositiveInteger, isNonNegativeInteger } from '../../utils/validation';
@@ -89,7 +90,7 @@ const BookingForm = ({ inquiry, quotation, onSuccess, onCancel }) => {
           Booking Summary (Read-only)
         </p>
 
-        <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div>
             <p className="text-xs text-gray-400">Customer</p>
             <p className="font-medium text-gray-900">{contact?.fullName || '—'}</p>
@@ -166,11 +167,7 @@ const BookingForm = ({ inquiry, quotation, onSuccess, onCancel }) => {
         <strong>advance the inquiry</strong> to Booked stage.
       </div>
 
-      {apiError && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          {apiError}
-        </div>
-      )}
+      <FormError message={apiError} />
     </FormLayout>
   );
 };

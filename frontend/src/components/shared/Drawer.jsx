@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
+import Button from './Button';
 
 /**
  * Drawer — slide-in side panel for detail-on-the-side views.
@@ -49,13 +50,7 @@ const Drawer = ({ isOpen, onClose, title, children, side = 'right', width = 'md'
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
+          <Button variant="ghost" size="sm" iconOnly icon={X} onClick={onClose} aria-label="Close" title="Close" />
         </div>
 
         {/* Body */}

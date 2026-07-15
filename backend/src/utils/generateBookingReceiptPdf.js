@@ -2,8 +2,10 @@ const PDFDocument = require('pdfkit');
 const resolveUploadPath = require('./resolveUploadPath');
 
 /**
- * generateBookingReceiptPdf — builds a booking receipt PDF using pdfkit.
- * Follows the same pattern as generateQuotationPdf.js.
+ * generateBookingReceiptPdf — builds a booking receipt PDF using pdfkit,
+ * styled as a formal printed ledger (centered letterhead, ruled tables, dual
+ * signature lines) to match generateQuotationPdf.js and the quotation
+ * on-screen preview.
  *
  * @param {object} params
  * @param {object} params.booking   - Full booking row (id, finalAmount, discountAmount, bookingAmount, status, erpSalesOrderRef, createdAt)
@@ -34,216 +36,257 @@ const generateBookingReceiptPdf = ({
     doc.on('end', () => resolve(Buffer.concat(buffers)));
     doc.on('error', reject);
 
-    const PRIMARY = '#4F46E5';
-    const GRAY_LIGHT = '#F8FAFC';
-    const GRAY_TEXT = '#6B7280';
     const BLACK = '#111827';
-    const GREEN = '#059669';
+    const GRAY_TEXT = '#6B7280';
+    const GRAY_FAINT = '#9CA3AF';
+    const RULE = '#111827';
+    const RULE_LIGHT = '#E5E7EB';
 
+    const STATUS_BADGE = {
+      CONFIRMED: { bg: '#D1FAE5', text: '#047857' },
+      CANCELLED: { bg: '#FEE2E2', text: '#DC2626' },
+    };
+
+    // pdfkit's standard 14 fonts (Helvetica) use WinAnsiEncoding, which has no
+    // glyph for ₹ (U+20B9) — Intl's "currency" style silently maps it to the
+    // wrong single-byte character (¹) instead. Format the grouping ourselves
+    // and prefix "Rs." so it renders correctly without embedding a custom font.
     const formatCurrency = (amount) =>
-      new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-        maximumFractionDigits: 0,
-      }).format(Number(amount) || 0);
+      `Rs. ${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Number(amount) || 0)}`;
 
     const formatDate = (d) =>
-      new Date(d).toLocaleDateString('en-IN', {
-        year: 'numeric',
-        month: 'short',
-        day: '2-digit',
-      });
+      new Date(d).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: '2-digit' });
 
-    // ── Header bar ────────────────────────────────────────────────────────────
-    doc.rect(0, 0, doc.page.width, 70).fill(PRIMARY);
+    const pageLeft = 50;
+    const pageRight = 545;
+    const contentWidth = pageRight - pageLeft;
+    const companyName = company?.name || 'Real Estate CRM';
 
-    // Logo is optional — pdfkit only embeds JPEG/PNG, so a WEBP/SVG upload (or
-    // any other decode failure) just falls back to the text-only header rather
-    // than breaking receipt generation for the whole company.
-    let headerTextX = 50;
+    // ── Centered letterhead ──────────────────────────────────────────────────
+    let y = 50;
+
     const logoPath = resolveUploadPath(company?.logoUrl);
     if (logoPath) {
       try {
-        doc.image(logoPath, 50, 15, { fit: [40, 40] });
-        headerTextX = 100;
+        doc.image(logoPath, doc.page.width / 2 - 20, y, { fit: [40, 40] });
+        y += 48;
       } catch {
-        // Unsupported image format — keep the default text-only header.
+        // Unsupported image format — keep the text-only letterhead.
       }
     }
 
     doc
-      .fillColor('#FFFFFF')
-      .fontSize(20)
-      .font('Helvetica-Bold')
-      .text(company?.name || 'Real Estate CRM', headerTextX, 22);
-
-    doc.fontSize(9).font('Helvetica').text('BOOKING CONFIRMATION RECEIPT', headerTextX, 48);
-
-    doc.fontSize(9).text(`Receipt #${booking.id.slice(0, 8).toUpperCase()}`, 350, 35, {
-      align: 'right',
-      width: 200,
-    });
-
-    doc.fillColor(BLACK);
-
-    // ── Company info ──────────────────────────────────────────────────────────
-    let y = 90;
-    doc.fontSize(9).font('Helvetica').fillColor(GRAY_TEXT);
-    if (company?.address) doc.text(company.address, 50, y);
-    if (company?.phone) doc.text(`Tel: ${company.phone}`, 50, (y += 12));
-    if (company?.email) doc.text(`Email: ${company.email}`, 50, (y += 12));
-
-    // ── Dates block (right-aligned) ───────────────────────────────────────────
-    const dateY = 90;
-    doc.fillColor(GRAY_TEXT).fontSize(9);
-    doc.text('Booking Date:', 370, dateY, { width: 85 });
-    doc
       .fillColor(BLACK)
+      .fontSize(19)
       .font('Helvetica-Bold')
-      .text(formatDate(booking.createdAt), 460, dateY, { width: 85, align: 'right' });
-
-    if (booking.erpSalesOrderRef) {
-      doc.fillColor(GRAY_TEXT).font('Helvetica').fontSize(9);
-      doc.text('Sales Order:', 370, dateY + 14, { width: 85 });
-      doc
-        .fillColor(BLACK)
-        .font('Helvetica-Bold')
-        .text(booking.erpSalesOrderRef, 460, dateY + 14, { width: 85, align: 'right' });
-    }
-
-    doc.fillColor(BLACK).font('Helvetica');
-
-    // ── Divider ───────────────────────────────────────────────────────────────
-    y = Math.max(y + 20, 140);
-    doc.moveTo(50, y).lineTo(545, y).strokeColor('#E5E7EB').lineWidth(1).stroke();
-    y += 16;
-
-    // ── CONFIRMED badge ───────────────────────────────────────────────────────
-    const badgeColor = booking.status === 'CONFIRMED' ? GREEN : '#DC2626';
-    doc.rect(50, y, 90, 22).fill(badgeColor);
-    doc
-      .fillColor('#FFFFFF')
-      .fontSize(9)
-      .font('Helvetica-Bold')
-      .text(booking.status, 50, y + 6, { width: 90, align: 'center' });
-    y += 32;
-
-    // ── Two-column: Customer + Unit ───────────────────────────────────────────
-    const colLeft = 50;
-    const colRight = 300;
-
-    doc.fillColor(PRIMARY).fontSize(10).font('Helvetica-Bold').text('CUSTOMER DETAILS', colLeft, y);
-    y += 14;
-    doc.fillColor(BLACK).fontSize(11).font('Helvetica-Bold').text(contact?.fullName || '—', colLeft, y);
-    y += 14;
-    doc.fillColor(GRAY_TEXT).fontSize(9).font('Helvetica');
-    if (contact?.phone) doc.text(`Phone: ${contact.phone}`, colLeft, y);
-    if (contact?.email) doc.text(`Email: ${contact.email}`, colLeft, (y += 12));
-    if (contact?.address) doc.text(`Address: ${contact.address}`, colLeft, (y += 12));
-
-    const unitY = y - 40;
-    doc.fillColor(PRIMARY).fontSize(10).font('Helvetica-Bold').text('PROPERTY DETAILS', colRight, unitY);
-    let unitSubY = unitY + 14;
-    doc
-      .fillColor(BLACK)
-      .fontSize(11)
-      .font('Helvetica-Bold')
-      .text(`Unit ${unit?.unitNumber || '—'}`, colRight, unitSubY);
-    unitSubY += 14;
-    doc.fillColor(GRAY_TEXT).fontSize(9).font('Helvetica');
-    doc.text(`Project: ${unit?.project?.name || '—'}`, colRight, unitSubY);
-    unitSubY += 12;
-    if (unit?.project?.location) {
-      doc.text(`Location: ${unit.project.location}`, colRight, unitSubY);
-      unitSubY += 12;
-    }
-    doc.text(`Status: RESERVED`, colRight, unitSubY);
-    unitSubY += 12;
-    doc.text(`Booked by: ${bookedBy?.fullName || '—'}`, colRight, unitSubY);
-
-    // ── Divider ───────────────────────────────────────────────────────────────
-    y = Math.max(y + 28, unitSubY + 24);
-    doc.moveTo(50, y).lineTo(545, y).strokeColor('#E5E7EB').lineWidth(1).stroke();
-    y += 16;
-
-    // ── Booking Financials ────────────────────────────────────────────────────
-    doc.fillColor(PRIMARY).fontSize(10).font('Helvetica-Bold').text('BOOKING SUMMARY', 50, y);
-    y += 16;
-
-    // Table header
-    doc.rect(50, y, 495, 24).fill('#F3F4F6');
-    doc.fillColor(GRAY_TEXT).fontSize(9).font('Helvetica-Bold');
-    doc.text('DESCRIPTION', 60, y + 7);
-    doc.text('AMOUNT', 490, y + 7, { width: 50, align: 'right' });
+      .text(companyName.toUpperCase(), pageLeft, y, { width: contentWidth, align: 'center' });
     y += 24;
 
-    const rows = [
-      { label: 'Quoted Amount', amount: quotation?.totalAmount },
-      { label: 'Discount Applied', amount: `-${formatCurrency(booking.discountAmount)}`, raw: true },
-      { label: 'Final Agreed Amount', amount: booking.finalAmount, bold: true },
-      { label: 'Booking Amount (Token)', amount: booking.bookingAmount, bold: true },
-    ];
-
-    rows.forEach((row, idx) => {
-      const bg = idx % 2 === 0 ? GRAY_LIGHT : '#FFFFFF';
-      doc.rect(50, y, 495, 28).fill(bg);
+    const contactLine = [company?.address, company?.phone].filter(Boolean).join('   ·   ');
+    if (contactLine) {
       doc
-        .fillColor(BLACK)
-        .fontSize(row.bold ? 10 : 9)
-        .font(row.bold ? 'Helvetica-Bold' : 'Helvetica');
-      doc.text(row.label, 60, y + 8);
-      const amtStr = row.raw ? row.amount : formatCurrency(row.amount);
-      doc.text(amtStr, 490, y + 8, { width: 50, align: 'right' });
-      y += 28;
-    });
+        .fillColor(GRAY_TEXT)
+        .fontSize(9)
+        .font('Helvetica')
+        .text(contactLine, pageLeft, y, { width: contentWidth, align: 'center' });
+      y += 16;
+    }
 
-    // Total paid row
-    const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
-    doc.rect(50, y, 495, 32).fill(PRIMARY);
-    doc.fillColor('#FFFFFF').fontSize(11).font('Helvetica-Bold');
-    doc.text('TOTAL PAYMENTS RECORDED', 60, y + 9);
-    doc.text(formatCurrency(totalPaid), 490, y + 9, { width: 50, align: 'right' });
+    // "Booking Confirmation Receipt" pill badge, centered.
+    y += 6;
+    const badgeText = 'BOOKING CONFIRMATION RECEIPT';
+    doc.fontSize(9).font('Helvetica-Bold');
+    const badgeTextWidth = doc.widthOfString(badgeText);
+    const badgeWidth = badgeTextWidth + 32;
+    const badgeX = (doc.page.width - badgeWidth) / 2;
+    doc.roundedRect(badgeX, y, badgeWidth, 22, 11).lineWidth(1).strokeColor(BLACK).stroke();
+    doc.fillColor(BLACK).text(badgeText, badgeX, y + 6.5, { width: badgeWidth, align: 'center', characterSpacing: 0.6 });
+    y += 34;
+
+    // Double rule under the letterhead.
+    doc.moveTo(pageLeft, y).lineTo(pageRight, y).lineWidth(1.5).strokeColor(RULE).stroke();
+    doc.moveTo(pageLeft, y + 3).lineTo(pageRight, y + 3).lineWidth(0.75).strokeColor(RULE).stroke();
+    y += 22;
+
+    // ── Meta row: Receipt No. / Booking Date / Sales Order ────────────────────
+    const colW = contentWidth / 3;
+    doc.fillColor(GRAY_FAINT).fontSize(8).font('Helvetica-Bold').text('RECEIPT NO.', pageLeft, y, { width: colW, align: 'left' });
+    doc.text('BOOKING DATE', pageLeft, y, { width: contentWidth, align: 'center' });
+    doc.text('SALES ORDER', pageLeft + colW * 2, y, { width: colW, align: 'right' });
+    y += 12;
+
+    doc.fillColor(BLACK).fontSize(10).font('Helvetica-Bold').text(booking.id.slice(0, 8).toUpperCase(), pageLeft, y, { width: colW, align: 'left' });
+    doc.text(formatDate(booking.createdAt), pageLeft, y, { width: contentWidth, align: 'center' });
+    doc.text(booking.erpSalesOrderRef || '—', pageLeft + colW * 2, y, { width: colW, align: 'right' });
+    y += 24;
+
+    // ── Status badge ───────────────────────────────────────────────────────────
+    doc.fillColor(GRAY_TEXT).fontSize(9).font('Helvetica').text('Status:', pageLeft, y + 5);
+    const statusBadge = STATUS_BADGE[booking.status] || STATUS_BADGE.CONFIRMED;
+    doc.fontSize(8).font('Helvetica-Bold');
+    const statusText = booking.status || 'CONFIRMED';
+    const statusTextWidth = doc.widthOfString(statusText);
+    const statusBadgeWidth = statusTextWidth + 18;
+    doc.roundedRect(pageLeft + 42, y, statusBadgeWidth, 18, 9).fill(statusBadge.bg);
+    doc.fillColor(statusBadge.text).text(statusText, pageLeft + 42, y + 5, { width: statusBadgeWidth, align: 'center' });
     y += 32;
 
-    // ── Payments list ─────────────────────────────────────────────────────────
-    if (payments.length > 0) {
-      y += 20;
-      doc.fillColor(PRIMARY).fontSize(10).font('Helvetica-Bold').text('PAYMENT HISTORY', 50, y);
-      y += 14;
+    // ── Customer / Property (ruled block) ─────────────────────────────────────
+    doc.moveTo(pageLeft, y).lineTo(pageRight, y).lineWidth(0.75).strokeColor(RULE_LIGHT).stroke();
+    y += 14;
 
-      doc.rect(50, y, 495, 22).fill('#F3F4F6');
-      doc.fillColor(GRAY_TEXT).fontSize(8).font('Helvetica-Bold');
-      doc.text('DATE', 60, y + 6);
-      doc.text('MODE', 170, y + 6);
-      doc.text('REF #', 280, y + 6);
-      doc.text('AMOUNT', 490, y + 6, { width: 50, align: 'right' });
-      y += 22;
+    const colLeft = pageLeft;
+    const colRight = pageLeft + contentWidth / 2 + 10;
+    const colHalfWidth = contentWidth / 2 - 10;
+    const sectionTop = y;
 
-      payments.forEach((p, idx) => {
-        const bg = idx % 2 === 0 ? GRAY_LIGHT : '#FFFFFF';
-        doc.rect(50, y, 495, 24).fill(bg);
-        doc.fillColor(BLACK).fontSize(9).font('Helvetica');
-        doc.text(formatDate(p.paidAt), 60, y + 6);
-        doc.text(p.mode.replace('_', ' '), 170, y + 6);
-        doc.text(p.referenceNumber || '—', 280, y + 6);
-        doc.text(formatCurrency(p.amount), 490, y + 6, { width: 50, align: 'right' });
-        y += 24;
-      });
+    doc.fillColor(GRAY_FAINT).fontSize(8).font('Helvetica-Bold').text('CUSTOMER', colLeft, y, { width: colHalfWidth });
+    y += 13;
+    doc.fillColor(BLACK).fontSize(11).font('Helvetica-Bold').text(contact?.fullName || '—', colLeft, y, { width: colHalfWidth });
+    y += 15;
+    doc
+      .fillColor(GRAY_TEXT)
+      .fontSize(9)
+      .font('Helvetica')
+      .text([contact?.phone, contact?.email].filter(Boolean).join('   ·   ') || '—', colLeft, y, { width: colHalfWidth });
+    let leftColEnd = y + 12;
+    if (contact?.address) {
+      doc.text(contact.address, colLeft, leftColEnd, { width: colHalfWidth });
+      leftColEnd += 12;
     }
+
+    let ry = sectionTop;
+    doc.fillColor(GRAY_FAINT).fontSize(8).font('Helvetica-Bold').text('PROPERTY', colRight, ry, { width: colHalfWidth });
+    ry += 13;
+    const propertyTitle = `Unit ${unit?.unitNumber || '—'}${unit?.project?.name ? `, ${unit.project.name}` : ''}`;
+    doc.fillColor(BLACK).fontSize(11).font('Helvetica-Bold').text(propertyTitle, colRight, ry, { width: colHalfWidth });
+    ry += 15;
+    doc
+      .fillColor(GRAY_TEXT)
+      .fontSize(9)
+      .font('Helvetica')
+      .text(
+        [unit?.project?.location, `Booked by ${bookedBy?.fullName || '—'}`].filter(Boolean).join('   ·   '),
+        colRight,
+        ry,
+        { width: colHalfWidth }
+      );
+    const rightColEnd = ry + 12;
+
+    y = Math.max(leftColEnd, rightColEnd) + 12;
+    doc.moveTo(pageLeft, y).lineTo(pageRight, y).lineWidth(0.75).strokeColor(RULE_LIGHT).stroke();
+    y += 20;
+
+    // ── Booking summary (ruled table) ──────────────────────────────────────────
+    const amountColX = 460;
+    const amountColWidth = pageRight - amountColX;
+
+    doc.fillColor(GRAY_FAINT).fontSize(8).font('Helvetica-Bold').text('BOOKING SUMMARY', pageLeft, y);
+    doc.text('AMOUNT (RS.)', amountColX, y, { width: amountColWidth, align: 'right' });
+    y += 10;
+    doc.moveTo(pageLeft, y).lineTo(pageRight, y).lineWidth(1.5).strokeColor(RULE).stroke();
+    y += 10;
+
+    const drawRow = (label, amountStr, { bold = false, faint = false } = {}) => {
+      doc
+        .fillColor(bold ? BLACK : faint ? GRAY_TEXT : BLACK)
+        .fontSize(bold ? 10 : 9.5)
+        .font(bold ? 'Helvetica-Bold' : 'Helvetica')
+        .text(label, pageLeft, y, { width: amountColX - pageLeft - 10 });
+      doc.text(amountStr, amountColX, y, { width: amountColWidth, align: 'right' });
+      y += 12;
+      doc.moveTo(pageLeft, y).lineTo(pageRight, y).lineWidth(0.5).strokeColor(RULE_LIGHT).stroke();
+      y += 10;
+    };
+
+    drawRow('Quoted Amount', formatCurrency(quotation?.totalAmount), { faint: true });
+    if (Number(booking.discountAmount) > 0) {
+      drawRow('Discount Applied', `- ${formatCurrency(booking.discountAmount)}`, { faint: true });
+    }
+    drawRow('Final Agreed Amount', formatCurrency(booking.finalAmount), { bold: true });
+    drawRow('Booking Amount (Token)', formatCurrency(booking.bookingAmount), { bold: true });
+
+    const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+    doc.moveTo(pageLeft, y - 10).lineTo(pageRight, y - 10).lineWidth(1.5).strokeColor(RULE).stroke();
+    doc
+      .fillColor(BLACK)
+      .fontSize(12)
+      .font('Helvetica-Bold')
+      .text('Total Payments Recorded', pageLeft, y, { width: amountColX - pageLeft - 10 });
+    doc.text(formatCurrency(totalPaid), amountColX, y, { width: amountColWidth, align: 'right' });
+    y += 30;
+
+    // ── Payment history (ruled table) ──────────────────────────────────────────
+    if (payments.length > 0) {
+      const dateColX = pageLeft;
+      const modeColX = pageLeft + 100;
+      const refColX = pageLeft + 210;
+      const payAmountColX = 460;
+
+      doc.fillColor(GRAY_FAINT).fontSize(8).font('Helvetica-Bold');
+      doc.text('DATE', dateColX, y);
+      doc.text('MODE', modeColX, y);
+      doc.text('REFERENCE', refColX, y);
+      doc.text('AMOUNT (RS.)', payAmountColX, y, { width: pageRight - payAmountColX, align: 'right' });
+      y += 10;
+      doc.moveTo(pageLeft, y).lineTo(pageRight, y).lineWidth(1.5).strokeColor(RULE).stroke();
+      y += 10;
+
+      payments.forEach((p) => {
+        doc.fillColor(BLACK).fontSize(9).font('Helvetica');
+        doc.text(formatDate(p.paidAt), dateColX, y, { width: 95 });
+        doc.text((p.mode || '—').replace('_', ' '), modeColX, y, { width: 105 });
+        doc.text(p.referenceNumber || '—', refColX, y, { width: 195 });
+        doc.text(formatCurrency(p.amount), payAmountColX, y, { width: pageRight - payAmountColX, align: 'right' });
+        y += 12;
+        doc.moveTo(pageLeft, y).lineTo(pageRight, y).lineWidth(0.5).strokeColor(RULE_LIGHT).stroke();
+        y += 10;
+      });
+      y += 8;
+    }
+
+    // ── Signatures ─────────────────────────────────────────────────────────────
+    const sigWidth = contentWidth * 0.4;
+    const sigLeftX = pageLeft;
+    const sigRightX = pageRight - sigWidth;
+    const signaturePath = resolveUploadPath(company?.signatureUrl);
+
+    // Reserve extra headroom above the line when there's an uploaded
+    // signature to draw — otherwise it can collide with the content above.
+    y += signaturePath ? 34 : 10;
+
+    if (signaturePath) {
+      try {
+        const sigImgW = 90;
+        const sigImgH = 28;
+        doc.image(signaturePath, sigRightX + (sigWidth - sigImgW) / 2, y - sigImgH - 4, { fit: [sigImgW, sigImgH] });
+      } catch {
+        // Unsupported image format — line stays blank, same as no signature uploaded.
+      }
+    }
+
+    doc.moveTo(sigLeftX, y).lineTo(sigLeftX + sigWidth, y).lineWidth(0.75).strokeColor(GRAY_FAINT).stroke();
+    doc.moveTo(sigRightX, y).lineTo(sigRightX + sigWidth, y).lineWidth(0.75).strokeColor(GRAY_FAINT).stroke();
+    y += 6;
+    doc
+      .fillColor(GRAY_TEXT)
+      .fontSize(8)
+      .font('Helvetica')
+      .text('Customer Signature', sigLeftX, y, { width: sigWidth, align: 'center' });
+    doc.text(`Authorized Signatory, ${companyName}`, sigRightX, y, { width: sigWidth, align: 'center' });
 
     // ── Footer ────────────────────────────────────────────────────────────────
     const footerY = doc.page.height - 50;
-    doc.moveTo(50, footerY - 10).lineTo(545, footerY - 10).strokeColor('#E5E7EB').stroke();
     doc
-      .fillColor(GRAY_TEXT)
+      .fillColor(GRAY_FAINT)
       .fontSize(8)
       .font('Helvetica')
       .text(
         'This is an official booking confirmation receipt. Please retain for your records. ' +
           'This document is system-generated and valid without a physical signature.',
-        50,
-        footerY - 6,
-        { width: 495, align: 'center' }
+        pageLeft,
+        footerY - 10,
+        { width: contentWidth, align: 'center' }
       );
 
     doc.end();

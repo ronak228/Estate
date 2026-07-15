@@ -71,7 +71,7 @@ const InteractionLog = ({ interactions = [], onAdd, canAdd = true }) => {
                 <Icon size={10} />
               </span>
 
-              <div className="p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
+              <div className="p-3 bg-white border border-gray-100 rounded-lg">
                 <div className="flex items-center gap-2 mb-1">
                   <StatusBadge value={interaction.type} />
                   {interaction.inquiry && (

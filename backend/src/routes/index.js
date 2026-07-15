@@ -12,8 +12,10 @@ const quotationRoutes = require('./quotationRoutes');
 const negotiationRoutes = require('./negotiationRoutes');
 const bookingRoutes = require('./bookingRoutes');
 const statsRoutes = require('./statsRoutes');
+const searchRoutes = require('./searchRoutes');
 
 router.use('/auth', authRoutes);
+router.use('/search', searchRoutes);
 router.use('/companies', companyRoutes);
 router.use('/projects', projectRoutes);
 router.use('/inquiries', inquiryRoutes);

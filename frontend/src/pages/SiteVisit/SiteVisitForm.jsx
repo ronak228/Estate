@@ -6,6 +6,7 @@ import Input from '../../components/shared/Input';
 import Select from '../../components/shared/Select';
 import Textarea from '../../components/shared/Textarea';
 import UnitAvailabilityList from '../../components/shared/UnitAvailabilityList';
+import FormError from '../../components/shared/FormError';
 import { showSuccess } from '../../lib/toast';
 
 /**
@@ -203,7 +204,7 @@ const SiteVisitForm = ({ siteVisit, onSuccess, onCancel }) => {
                     <button
                       type="button"
                       onClick={() => removeUnit(unit.id)}
-                      className="text-primary/60 hover:text-primary"
+                      className="text-primary/60 hover:text-primary transition-colors duration-150 ease-snappy"
                       aria-label={`Remove unit ${unit.unitNumber}`}
                     >
                       ×
@@ -229,11 +230,7 @@ const SiteVisitForm = ({ siteVisit, onSuccess, onCancel }) => {
         )}
       </div>
 
-      {apiError && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-          {apiError}
-        </div>
-      )}
+      <FormError message={apiError} />
     </FormLayout>
   );
 };

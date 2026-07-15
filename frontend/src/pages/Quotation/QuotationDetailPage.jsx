@@ -1,18 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Download, Plus, BookOpen } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Download, Plus, BookOpen, CheckCircle2, User, PhoneCall } from 'lucide-react';
 import quotationService from '../../services/quotationService';
 import bookingService from '../../services/bookingService';
+import companyService from '../../services/companyService';
 import PageLayout from '../../components/shared/PageLayout';
 import PageHeader from '../../components/shared/PageHeader';
 import Button from '../../components/shared/Button';
-import StatusBadge from '../../components/shared/StatusBadge';
+import StatusBadge, { StatusDot } from '../../components/shared/StatusBadge';
 import LoadingState from '../../components/shared/LoadingState';
 import ErrorState from '../../components/shared/ErrorState';
 import Modal from '../../components/shared/Modal';
-import Select from '../../components/shared/Select';
 import QuotationPreview from '../../components/shared/QuotationPreview';
 import Card from '../../components/shared/Card';
+import FormError from '../../components/shared/FormError';
+import { RecordList, RecordRow, RecordEmpty } from '../../components/shared/RecordList';
+import CopyIdChip from '../../components/shared/CopyIdChip';
 import QuotationForm from './QuotationForm';
 import BookingForm from '../Booking/BookingForm';
 import { useAuth } from '../../context/AuthContext';
@@ -34,6 +37,7 @@ const QuotationDetailPage = () => {
   const isManager = ['ADMIN', 'MANAGER'].includes(currentUser?.role);
 
   const [quotation, setQuotation] = useState(null);
+  const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -43,8 +47,8 @@ const QuotationDetailPage = () => {
   const [downloadPdfError, setDownloadPdfError] = useState('');
   const [requoteOpen, setRequoteOpen] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
-
-  // Check if a booking already exists for this inquiry
+  // Booking.inquiryId is unique — an inquiry has at most one booking, and its
+  // stage flips to BOOKED the moment one is created (reverts on cancel).
   const [existingBookingId, setExistingBookingId] = useState(null);
 
   const fetchQuotation = useCallback(async () => {
@@ -53,15 +57,12 @@ const QuotationDetailPage = () => {
     try {
       const data = await quotationService.getQuotation(id);
       setQuotation(data);
+      setExistingBookingId(null);
 
-      // Check if a booking already exists for this inquiry
-      if (data.inquiryId) {
+      if (data.inquiry?.stage === 'BOOKED' && data.inquiryId) {
         try {
-          const bookings = await bookingService.listBookings({ page: 1, pageSize: 1 });
-          // We just need to know if *this inquiry* has a booking — we check via listBookings
-          // The backend doesn't expose a direct "by inquiryId" filter yet, so we fetch the
-          // detail page for the booking if we navigate there. Instead, we check via the
-          // inquiry's booking relation when the booking exists (shown by navigating to it).
+          const bookings = await bookingService.listBookings({ inquiryId: data.inquiryId, page: 1, pageSize: 1 });
+          setExistingBookingId(bookings.items?.[0]?.id || null);
         } catch { /* non-blocking */ }
       }
     } catch (err) {
@@ -74,6 +75,12 @@ const QuotationDetailPage = () => {
   useEffect(() => {
     fetchQuotation();
   }, [fetchQuotation]);
+
+  // Letterhead branding for the quotation document — falls back to the
+  // generic placeholder inside QuotationPreview if this fails to load.
+  useEffect(() => {
+    companyService.getMyCompany().then(setCompany).catch(() => {});
+  }, []);
 
   const handleDecisionChange = async (e) => {
     const decision = e.target.value;
@@ -116,6 +123,11 @@ const QuotationDetailPage = () => {
 
   const { charges = [], unit, inquiry, createdBy } = quotation;
   const contact = inquiry?.contact;
+  const isBooked = inquiry?.stage === 'BOOKED';
+  const chargesTotal = charges.reduce((sum, c) => sum + Number(c.amount), 0);
+  const daysUntilValid = quotation.validUntil
+    ? Math.ceil((new Date(quotation.validUntil) - new Date()) / (1000 * 60 * 60 * 24))
+    : null;
 
   return (
     <PageLayout>
@@ -144,42 +156,86 @@ const QuotationDetailPage = () => {
             >
               Re-quote
             </Button>
-            {isManager && quotation.decision === 'ACCEPTED' && (
+            {isBooked ? (
               <Button
+                variant="successOutline"
                 size="sm"
-                icon={BookOpen}
-                onClick={() => setBookingOpen(true)}
+                icon={CheckCircle2}
+                onClick={() => existingBookingId && navigate(`/bookings/${existingBookingId}`)}
               >
-                Create Booking
+                Booked
               </Button>
+            ) : (
+              isManager && quotation.decision === 'ACCEPTED' && (
+                <Button
+                  size="sm"
+                  icon={BookOpen}
+                  onClick={() => setBookingOpen(true)}
+                >
+                  Create Booking
+                </Button>
+              )
             )}
           </div>
         }
       />
 
-      {downloadPdfError && (
-        <p className="text-sm text-red-600 mb-4">{downloadPdfError}</p>
-      )}
+      <FormError message={downloadPdfError} className="mb-4" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* At-a-glance stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Total Amount</p>
+          <p className="text-lg font-bold text-primary mt-1.5 tabular-nums">{formatCurrency(quotation.totalAmount)}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">Base + {charges.length} charge{charges.length === 1 ? '' : 's'}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Base Unit Price</p>
+          <p className="text-lg font-bold text-gray-900 mt-1.5 tabular-nums">{formatCurrency(quotation.basePrice)}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">Locked at issue date</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Decision</p>
+          <div className="mt-1.5"><StatusBadge value={quotation.decision} /></div>
+          <p className="text-[11px] text-gray-400 mt-1.5">Updated {formatDate(quotation.updatedAt || quotation.createdAt)}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Valid Until</p>
+          <p className="text-lg font-bold text-gray-900 mt-1.5">{quotation.validUntil ? formatDate(quotation.validUntil) : '—'}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            {daysUntilValid == null ? 'No expiry set' : daysUntilValid >= 0 ? `${daysUntilValid} day${daysUntilValid === 1 ? '' : 's'} remaining` : 'Expired'}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
         {/* Left — Quotation Preview */}
         <div className="lg:col-span-2">
-          <QuotationPreview quotation={quotation} />
+          <QuotationPreview quotation={quotation} company={company} />
         </div>
 
-        {/* Right — Controls + Summary */}
-        <div className="flex flex-col gap-4">
+        {/* Right — Controls + Summary — sticky rail so it stays visible while the preview scrolls */}
+        <div className="flex flex-col gap-4 lg:sticky lg:top-6">
 
           {/* Decision control */}
           <Card title="Customer Decision">
+            <div className="flex items-center gap-2.5 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5 mb-3">
+              <StatusDot value={quotation.decision} />
+              <div>
+                <p className="text-[10.5px] text-gray-400 leading-none">Current stage</p>
+                <p className="text-sm font-bold text-gray-800 mt-0.5">
+                  {DECISION_OPTIONS.find((o) => o.value === quotation.decision)?.label || quotation.decision}
+                </p>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Decision:</span>
+              <span className="text-sm text-gray-500">Update:</span>
               <select
                 value={quotation.decision}
                 onChange={handleDecisionChange}
                 disabled={decisionChanging}
-                className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
+                className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white transition-colors duration-150 ease-snappy hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-50"
               >
                 {DECISION_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -192,52 +248,59 @@ const QuotationDetailPage = () => {
                 <span className="text-xs text-red-600">{decisionChangeError}</span>
               )}
             </div>
-            <div className="mt-3">
-              <StatusBadge value={quotation.decision} />
-            </div>
-            <p className="text-xs text-gray-400 mt-3 leading-relaxed">
-              ACCEPTED signals Module 4 to start the booking. Re-quoting (new price/charges) always
-              creates a new quotation row — the history above is immutable.
+            <p className="text-xs text-gray-500 mt-3 leading-relaxed">
+              {isBooked
+                ? 'This quotation has already been converted into a booking.'
+                : quotation.decision === 'ACCEPTED'
+                ? "The customer has accepted this quotation — you can now convert it into a booking below."
+                : 'Mark this Accepted once the customer confirms, to unlock converting it into a booking. Need different pricing? Use Re-quote instead — it creates a fresh quotation and keeps this one\'s history intact.'}
             </p>
-            {isManager && quotation.decision === 'ACCEPTED' && (
-              <button
-                onClick={() => setBookingOpen(true)}
-                className="mt-3 w-full text-center text-xs text-primary font-medium hover:underline"
-              >
-                → Convert to Booking
-              </button>
+            {isBooked ? (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <Button
+                  variant="successOutline"
+                  size="sm"
+                  icon={CheckCircle2}
+                  onClick={() => existingBookingId && navigate(`/bookings/${existingBookingId}`)}
+                  className="w-full justify-center"
+                >
+                  Booked — View Booking
+                </Button>
+              </div>
+            ) : (
+              isManager && quotation.decision === 'ACCEPTED' && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={BookOpen}
+                    onClick={() => setBookingOpen(true)}
+                    className="w-full justify-center"
+                  >
+                    Convert to Booking
+                  </Button>
+                </div>
+              )
             )}
           </Card>
 
-          {/* Quick summary */}
+          {/* Linked records */}
+          <RecordList title="Linked Records">
+            {contact && (
+              <RecordRow to={`/contacts/${contact.id}`} icon={User} primary={`View contact — ${contact.fullName}`} />
+            )}
+            {inquiry && (
+              <RecordRow to={`/inquiries/${inquiry.id}`} icon={PhoneCall} primary="View inquiry" />
+            )}
+            {isBooked && existingBookingId && (
+              <RecordRow to={`/bookings/${existingBookingId}`} icon={BookOpen} primary="View booking" />
+            )}
+            {!contact && !inquiry && <RecordEmpty />}
+          </RecordList>
+
+          {/* Quick summary — fields not already covered by the stat strip above */}
           <Card title="Summary">
             <dl className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Contact</dt>
-                <dd className="font-medium text-gray-900">
-                  {contact ? (
-                    <Link
-                      to={`/contacts/${contact.id}`}
-                      className="text-primary hover:underline"
-                    >
-                      {contact.fullName}
-                    </Link>
-                  ) : '—'}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Inquiry</dt>
-                <dd className="font-medium">
-                  {inquiry ? (
-                    <Link
-                      to={`/inquiries/${inquiry.id}`}
-                      className="text-primary hover:underline"
-                    >
-                      View Inquiry
-                    </Link>
-                  ) : '—'}
-                </dd>
-              </div>
               <div className="flex justify-between">
                 <dt className="text-gray-500">Unit</dt>
                 <dd className="font-medium text-gray-900">Unit {unit?.unitNumber || '—'}</dd>
@@ -247,32 +310,12 @@ const QuotationDetailPage = () => {
                 <dd className="font-medium text-gray-900">{unit?.project?.name || '—'}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-500">Base Price</dt>
-                <dd className="font-medium text-gray-900">{formatCurrency(quotation.basePrice)}</dd>
-              </div>
-              <div className="flex justify-between">
                 <dt className="text-gray-500">Charges ({charges.length})</dt>
                 <dd className="font-medium text-gray-900">
-                  {formatCurrency(
-                    charges.reduce((sum, c) => sum + Number(c.amount), 0)
-                  )}
+                  {formatCurrency(chargesTotal)}
                 </dd>
               </div>
               <div className="flex justify-between border-t border-gray-100 pt-3">
-                <dt className="font-semibold text-gray-900">Total</dt>
-                <dd className="font-bold text-primary text-base">
-                  {formatCurrency(quotation.totalAmount)}
-                </dd>
-              </div>
-              {quotation.validUntil && (
-                <div className="flex justify-between">
-                  <dt className="text-gray-500">Valid Until</dt>
-                  <dd className="font-medium text-amber-600">
-                    {formatDate(quotation.validUntil)}
-                  </dd>
-                </div>
-              )}
-              <div className="flex justify-between">
                 <dt className="text-gray-500">Created By</dt>
                 <dd className="font-medium text-gray-900">{createdBy?.fullName || '—'}</dd>
               </div>
@@ -280,10 +323,7 @@ const QuotationDetailPage = () => {
           </Card>
 
           {/* Quotation ID */}
-          <div className="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3">
-            <p className="text-xs text-gray-400">Quotation ID</p>
-            <p className="text-xs font-mono text-gray-600 mt-0.5 break-all">{quotation.id}</p>
-          </div>
+          <CopyIdChip label="Quotation ID" value={quotation.id} />
         </div>
       </div>
 

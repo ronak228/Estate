@@ -43,6 +43,15 @@ const bookingService = {
     const res = await api.get(`/bookings/${bookingId}/payments`);
     return res.data.data.items;
   },
+
+  /**
+   * Receipt for a single payment row. `paymentId` may be the literal string
+   * "token" for the booking's token/booking amount (see utils/booking.js).
+   */
+  getPaymentReceiptBlob: async (bookingId, paymentId) => {
+    const res = await api.get(`/bookings/${bookingId}/payments/${paymentId}/receipt`, { responseType: 'blob' });
+    return res.data;
+  },
 };
 
 export default bookingService;

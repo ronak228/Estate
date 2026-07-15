@@ -64,14 +64,14 @@ const ChargeLineEditor = ({ charges = [], onChange }) => {
             step="1"
             className="w-36 px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
           />
-          <button
-            type="button"
+          <Button
+            variant="dangerGhost"
+            size="md"
+            iconOnly
+            icon={Trash2}
             onClick={() => removeCharge(index)}
-            className="p-2 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
             aria-label="Remove charge"
-          >
-            <Trash2 size={16} />
-          </button>
+          />
         </div>
       ))}
     </div>

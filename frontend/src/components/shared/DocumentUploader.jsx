@@ -4,6 +4,7 @@ import FileUploader from './FileUploader';
 import Select from './Select';
 import StatusBadge from './StatusBadge';
 import ConfirmDialog from './ConfirmDialog';
+import Button from './Button';
 import { formatDate } from '../../utils/format';
 
 const DOCUMENT_TYPE_OPTIONS = [
@@ -100,15 +101,9 @@ const DocumentUploader = ({
         {selectedFile && (
           <div className="mt-2 flex items-center justify-between">
             <p className="text-xs text-gray-500 truncate max-w-xs">{selectedFile.name}</p>
-            <button
-              type="button"
-              onClick={handleUpload}
-              disabled={uploading}
-              className="flex items-center gap-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-            >
-              <Upload size={14} />
+            <Button size="sm" icon={Upload} loading={uploading} onClick={handleUpload}>
               {uploading ? 'Uploading...' : 'Upload'}
-            </button>
+            </Button>
           </div>
         )}
 
@@ -139,25 +134,27 @@ const DocumentUploader = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    type="button"
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    iconOnly
+                    icon={Download}
                     onClick={() => onDownload?.(doc)}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/5 transition-colors"
                     title="View / Download"
-                  >
-                    <Download size={15} />
-                  </button>
+                    aria-label={`Download ${doc.fileName}`}
+                  />
 
                   {canDelete && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="dangerGhost"
+                      size="sm"
+                      iconOnly
+                      icon={Trash2}
                       onClick={() => setDeleteTarget(doc)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                       title="Delete document"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                      aria-label={`Delete ${doc.fileName}`}
+                    />
                   )}
                 </div>
               </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Edit, CheckCircle, Plus } from 'lucide-react';
+import { ArrowLeft, Edit, CheckCircle, Plus, User, Phone, Building2, StickyNote, Layers } from 'lucide-react';
 import siteVisitService from '../../services/siteVisitService';
 import PageLayout from '../../components/shared/PageLayout';
 import PageHeader from '../../components/shared/PageHeader';
@@ -15,6 +15,22 @@ import SiteVisitForm from './SiteVisitForm';
 import QuotationForm from '../Quotation/QuotationForm';
 import { showSuccess, getErrorMessage } from '../../lib/toast';
 import { formatDateTime } from '../../utils/format';
+
+const SectionIcon = ({ icon: Icon }) => (
+  <div className="w-9 h-9 rounded-lg bg-primary-50 text-primary flex items-center justify-center flex-shrink-0">
+    <Icon size={17} />
+  </div>
+);
+
+const DetailField = ({ icon: Icon, label, value, span }) => (
+  <div className={span ? 'col-span-2' : undefined}>
+    <dt className="text-[11px] text-gray-400 flex items-center gap-1.5">
+      <Icon size={12} className="text-gray-400" />
+      {label}
+    </dt>
+    <dd className="font-semibold text-gray-800 mt-1">{value}</dd>
+  </div>
+);
 
 const SiteVisitDetailPage = () => {
   const { id } = useParams();
@@ -86,11 +102,10 @@ const SiteVisitDetailPage = () => {
             )}
             {canComplete && (
               <Button
-                variant="outline"
+                variant="successOutline"
                 size="sm"
                 icon={CheckCircle}
                 onClick={() => { setCompleteError(''); setCompleteOpen(true); }}
-                className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
               >
                 Mark Complete
               </Button>
@@ -104,70 +119,82 @@ const SiteVisitDetailPage = () => {
         }
       />
 
+      {/* At-a-glance */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Status</p>
+          <div className="mt-1.5"><StatusBadge value={siteVisit.status} /></div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Units of Interest</p>
+          <p className="text-lg font-bold text-gray-900 mt-1.5 tabular-nums">{siteVisit.units?.length ?? 0}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Scheduled At</p>
+          <p className="text-sm font-bold text-gray-900 mt-1.5">{formatDateTime(siteVisit.scheduledAt)}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-wide text-gray-400">Scheduled By</p>
+          <p className="text-sm font-bold text-gray-900 mt-1.5">{siteVisit.createdBy?.fullName || '—'}</p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Visit Details */}
-        <Card title="Visit Details">
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-            <div>
-              <dt className="text-gray-500">Contact</dt>
-              <dd className="font-medium text-gray-900 mt-0.5">
-                <Link
-                  to={`/contacts/${siteVisit.inquiry?.contact?.id}`}
-                  className="text-primary hover:underline"
-                >
+        <Card
+          title={
+            <div className="flex items-center gap-3">
+              <SectionIcon icon={User} />
+              <h2 className="text-sm font-semibold text-gray-800 tracking-tight">Visit Details</h2>
+            </div>
+          }
+        >
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+            <DetailField
+              icon={User}
+              label="Contact"
+              value={
+                <Link to={`/contacts/${siteVisit.inquiry?.contact?.id}`} className="text-primary hover:underline">
                   {siteVisit.inquiry?.contact?.fullName || '—'}
                 </Link>
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Phone</dt>
-              <dd className="font-medium text-gray-900 mt-0.5">
-                {siteVisit.inquiry?.contact?.phone || '—'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Status</dt>
-              <dd className="mt-0.5">
-                <StatusBadge value={siteVisit.status} />
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Scheduled At</dt>
-              <dd className="font-medium text-gray-900 mt-0.5">
-                {formatDateTime(siteVisit.scheduledAt)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Inquiry Stage</dt>
-              <dd className="mt-0.5">
-                {siteVisit.inquiry ? (
+              }
+            />
+            <DetailField icon={Phone} label="Phone" value={siteVisit.inquiry?.contact?.phone || '—'} />
+            <DetailField
+              icon={Building2}
+              label="Inquiry Stage"
+              value={
+                siteVisit.inquiry ? (
                   <Link to={`/inquiries/${siteVisit.inquiry.id}`}>
                     <StatusBadge value={siteVisit.inquiry.stage} />
                   </Link>
-                ) : '—'}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-gray-500">Scheduled By</dt>
-              <dd className="font-medium text-gray-900 mt-0.5">
-                {siteVisit.createdBy?.fullName || '—'}
-              </dd>
-            </div>
+                ) : '—'
+              }
+            />
             {siteVisit.notes && (
-              <div className="col-span-2">
-                <dt className="text-gray-500">Notes</dt>
-                <dd className="font-medium text-gray-900 mt-0.5 whitespace-pre-wrap">
-                  {siteVisit.notes}
-                </dd>
-              </div>
+              <DetailField
+                icon={StickyNote}
+                label="Notes"
+                value={<span className="whitespace-pre-wrap font-medium text-gray-700">{siteVisit.notes}</span>}
+                span
+              />
             )}
           </dl>
         </Card>
 
         {/* Interested Units — a customer may be interested in several units
             of the same property before deciding on one. */}
-        <Card title={`Interested Units${siteVisit.units?.length > 0 ? ` (${siteVisit.units.length})` : ''}`}>
+        <Card
+          title={
+            <div className="flex items-center gap-3">
+              <SectionIcon icon={Layers} />
+              <h2 className="text-sm font-semibold text-gray-800 tracking-tight">
+                Interested Units{siteVisit.units?.length > 0 ? ` (${siteVisit.units.length})` : ''}
+              </h2>
+            </div>
+          }
+        >
           {siteVisit.units?.length > 0 ? (
             <ul className="flex flex-col divide-y divide-gray-100">
               {siteVisit.units.map((unit) => (
